@@ -63,6 +63,7 @@ npm run dev
 1. 在 [阿里云百炼模型广场](https://bailian.console.aliyun.com/cn-beijing#/model-market/all) 筛选你关注的 Provider 和能力标签
 
 2. 复制浏览器地址栏中的完整 URL
+<img width="1529" height="1063" alt="Snipaste_2026-04-06_15-40-26" src="https://github.com/user-attachments/assets/f951b1c4-210c-4308-91c4-a31fb06cbfdc" />
 
 3. 粘贴到抓取配置页面，点击「**保存并开始抓取**」
 
