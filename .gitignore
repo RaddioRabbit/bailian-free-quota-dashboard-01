@@ -35,3 +35,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .session.json
+.source-config.json
+debug-*.png
+debug-*.json
