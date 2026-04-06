@@ -4,8 +4,6 @@
 
 一个用于查看阿里云百炼模型广场免费额度、过期时间和剩余额度的轻量化 Dashboard。登录阿里云账号后可拉取真实数据，通过搜索、筛选、排序快速定位即将过期或额度紧张的模型。
 
-![界面预览](https://bailian.console.aliyun.com/favicon.ico)
-
 ## 功能
 
 - 查看 Qwen、DeepSeek、MiniMax、Moonshot、Zhipu 等主流模型的免费额度和过期时间
