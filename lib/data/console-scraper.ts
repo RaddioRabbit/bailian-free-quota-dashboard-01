@@ -26,7 +26,7 @@ const CONSOLE_BASE = "https://bailian.console.aliyun.com";
 const CONSOLE_GATEWAY_URL =
   "https://bailian-cs.console.aliyun.com/data/api.json?action=BroadScopeAspnGateway&product=sfm_bailian";
 const DEFAULT_MODEL_MARKET_URL =
-  "https://bailian.console.aliyun.com/cn-beijing?tab=model#/model-market/all?providers=mini-max%2Cmoonshot-ai%2Czhipu-ai%2Cqwen&inferenceProviders=minimax%2Cbailian&capabilities=TG%2CReasoning%2CVU";
+  "https://bailian.console.aliyun.com/cn-beijing#/model-market/all";
 const MODEL_DETAIL_URL = (id: string) =>
   `${CONSOLE_BASE}/cn-beijing#/model-market/detail/${encodeURIComponent(id)}`;
 const PROVIDER_LABELS: Record<string, string> = {
