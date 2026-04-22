@@ -12,11 +12,13 @@
 - 登录阿里云账号后拉取真实数据（Playwright 自动化）
 - 自定义抓取范围：配置要监控的模型广场页面 URL
 - 数据本地缓存（默认 5 分钟），支持手动刷新
+- 支持 Docker 部署，前后端分离运行
 
 ## 环境要求
 
 - Node.js 18+
 - npm
+- Docker Desktop（Docker 部署方式需要）
 
 ## 安装
 
@@ -34,15 +36,17 @@ npx playwright install chromium
 
 ## 使用
 
-### 1. 启动应用
+### 方式一：本地开发运行（推荐初次使用）
+
+#### 1. 启动应用
 
 ```bash
 npm run dev
 ```
 
-打开浏览器访问 [http://localhost:3001](http://localhost:3001)。
+打开浏览器访问 [http://localhost:3010](http://localhost:3010)。
 
-### 2. 登录阿里云账号
+#### 2. 登录阿里云账号
 
 初次使用需要登录，点击页面右上角的「**登录阿里云账号**」按钮：
 
@@ -51,17 +55,16 @@ npm run dev
 3. 登录成功后，关闭或保留弹出窗口，回到 Dashboard
 4. 点击「**刷新**」按钮，Dashboard 开始拉取真实额度数据
 
-> Session 保存在本地 `.session.json`（已加入 `.gitignore`，不会提交到 Git）。  
+> Session 保存在本地 `.session.json`（已加入 `.gitignore`，不会提交到 Git）。
 > 此后每次重启应用都会自动复用已保存的 session，无需重复登录。
 
-### 3. 配置抓取范围（可选）
+#### 3. 配置抓取范围（可选）
 
 登录后，点击「**抓取配置**」可自定义要监控的模型范围：
 
 1. 在 [阿里云百炼模型广场](https://bailian.console.aliyun.com/cn-beijing#/model-market/all) 筛选你关注的 Provider 和能力标签
 
 2. 复制浏览器地址栏中的完整 URL
-<img width="1529" height="1063" alt="Snipaste_2026-04-06_15-40-26" src="https://github.com/user-attachments/assets/f951b1c4-210c-4308-91c4-a31fb06cbfdc" />
 
 3. 粘贴到抓取配置页面，点击「**保存并开始抓取**」
 
@@ -73,12 +76,119 @@ npm run dev
 https://bailian.console.aliyun.com/cn-beijing#/model-market/all?providers=qwen%2Cmini-max%2Cmoonshot-ai%2Czhipu-ai%2Cdeepseek&capabilities=TG%2CReasoning%2CVU
 ```
 
-### 4. 日常使用
+#### 4. 日常使用
 
 - 点击「**刷新**」手动更新数据（数据默认缓存 5 分钟）
 - 使用顶部搜索框按模型名过滤
 - 使用筛选按钮查看「即将过期」或「额度紧张」的模型
 - 点击列标题可按名称、过期时间、剩余额度排序
+
+---
+
+### 方式二：Docker 部署（推荐长期运行）
+
+架构说明：Next.js 前端运行在 Docker 容器中，Playwright 抓取继续在宿主机（本机）运行，通过共享 `./data` 目录交换数据。
+
+#### 部署步骤
+
+```bash
+# 1. 构建并启动 Docker 容器
+docker-compose up -d --build
+
+# 2. 浏览器访问 http://localhost:3010
+```
+
+`docker-compose.yml` 关键配置：
+
+- 端口映射 `3010:3010`
+- 共享卷 `./data:/app/data:ro`（容器只读挂载）
+- 环境变量 `DATA_DIR=/app/data`
+
+#### Docker 模式下的登录状态检测
+
+容器通过检查 `DATA_DIR` 环境变量 + `quotas.json` 文件存在性来判断是否已登录，不需要 `.session.json`。
+
+因此 Docker 模式下需要先在宿主机运行一次数据抓取（见下方「独立数据抓取脚本」），生成 `data/quotas.json` 后，容器才能正常显示数据。
+
+---
+
+### 独立数据抓取脚本
+
+```bash
+npm run fetch-data
+```
+
+这是独立脚本，不启动前端服务器，直接调用 Playwright 抓取并写入 `./data/quotas.json`。
+
+**使用场景：**
+
+- 前端在 Docker 运行时，避免端口冲突
+- 定时自动抓取数据
+
+**脚本流程：**
+
+1. 检查 session → 没有则弹出浏览器登录
+2. 抓取模型额度
+3. 写入 `data/quotas.json`
+
+支持自动重试：session 过期时会自动重新登录并再次抓取。
+
+---
+
+### macOS 自动定时抓取（可选）
+
+使用 launchd 每隔一段时间自动运行 `npm run fetch-data`：
+
+```bash
+cat > ~/Library/LaunchAgents/com.bailian.fetch.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bailian.fetch</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-c</string>
+        <string>cd /Users/mima0000/Desktop/WorkplaceAgent/LiweiAgent/UsageAgent/bailian-dashboard_01 && /usr/local/bin/npm run fetch-data</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>1800</integer>
+    <key>StandardOutPath</key>
+    <string>/tmp/bailian-fetch.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/bailian-fetch.err.log</string>
+</dict>
+</plist>
+EOF
+
+launchctl load ~/Library/LaunchAgents/com.bailian.fetch.plist
+launchctl start com.bailian.fetch
+```
+
+建议间隔 30 分钟（1800 秒）或 1 小时（3600 秒）。
+
+如需停止定时任务：
+
+```bash
+launchctl stop com.bailian.fetch
+launchctl unload ~/Library/LaunchAgents/com.bailian.fetch.plist
+```
+
+---
+
+### 迁移到新电脑
+
+1. 安装 Node.js 20+ 和 Docker Desktop
+2. 复制项目文件夹（带上 `data/quotas.json` 和 `.session.json`）
+3. `npm install && npx playwright install chromium`
+4. `docker-compose up -d --build`
+5. 浏览器访问 http://localhost:3010
+6. 如果 session 失效，运行 `npm run fetch-data` 重新登录
+7. 如果 source-config 配置丢失，访问 `/source-config` 重新粘贴模型广场 URL
+
+---
 
 ## 环境变量（可选）
 
@@ -92,6 +202,7 @@ cp .env.example .env.local
 |------|------|--------|
 | `DASHSCOPE_API_KEY` | DashScope API Key（`sk-xxx`），用于 API 方式查询，实际效果受限 | 无 |
 | `CACHE_TTL` | 数据缓存时长（毫秒） | `300000`（5 分钟） |
+| `DATA_DIR` | 数据文件目录（Docker 模式使用） | 无 |
 
 > 推荐使用**登录方式**而非 API Key，登录方式可以获取完整的免费额度信息。
 
@@ -99,16 +210,17 @@ cp .env.example .env.local
 
 | 命令 | 说明 |
 |------|------|
-| `npm run dev` | 启动开发服务器（端口 3001） |
+| `npm run dev` | 启动开发服务器（端口 3010） |
 | `npm run build` | 构建生产版本 |
-| `npm run start` | 启动生产服务器（端口 3001） |
+| `npm run start` | 启动生产服务器（端口 3010） |
 | `npm run lint` | 运行 ESLint 检查 |
+| `npm run fetch-data` | 独立数据抓取（不启动前端） |
 
 ## 工作原理
 
 应用通过 Playwright 控制 Chromium 浏览器，复用已保存的阿里云 session，自动访问百炼控制台的各模型详情页，抓取免费额度、剩余量和过期时间等信息。
 
-数据流：
+数据流（本地模式）：
 
 ```
 Dashboard UI
@@ -117,16 +229,37 @@ Dashboard UI
       → 阿里云百炼控制台 API
 ```
 
+数据流（Docker 模式）：
+
+```
+宿主机: npm run fetch-data
+  → Playwright 抓取 → 写入 ./data/quotas.json
+
+容器: Dashboard UI
+  → GET /api/models
+    → 读取 /app/data/quotas.json（只读挂载）
+```
+
+### 自动刷新说明
+
+页面每 5 分钟自动静默刷新一次（重新读取数据），但这只是重新读取 `data/quotas.json` 文件，不会触发 Playwright 抓取。数据更新必须依赖宿主机运行 `npm run fetch-data`。
+
 ## 常见问题
 
-**Q: 登录后刷新仍然显示空数据？**  
+**Q: 登录后刷新仍然显示空数据？**
 A: 确认登录时在弹出窗口中已完全通过阿里云认证（密码 + 短信验证码 / 扫码）。可尝试退出登录后重新登录。
 
-**Q: 提示"Chromium 未找到"？**  
+**Q: 提示"Chromium 未找到"？**
 A: 在项目目录执行 `npx playwright install chromium`，然后重启应用。
 
-**Q: Session 多久会过期？**  
+**Q: Session 多久会过期？**
 A: 取决于阿里云账号的 session 有效期，通常为数天到数周。过期后点击「登录阿里云账号」重新登录即可。
 
-**Q: 如何退出登录？**  
+**Q: 如何退出登录？**
 A: 登录状态下，点击右上角「**退出登录**」按钮，会清除本地 session 和数据缓存。
+
+**Q: Docker 模式下页面显示"未登录"？**
+A: 确保已在宿主机运行 `npm run fetch-data` 生成 `data/quotas.json` 文件。Docker 容器通过检查该文件判断登录状态，不读取 `.session.json`。
+
+**Q: 定时任务没有运行？**
+A: 检查 plist 文件中的路径是否正确，特别是 `npm` 的绝对路径（可用 `which npm` 确认）。查看 `/tmp/bailian-fetch.err.log` 获取错误信息。
