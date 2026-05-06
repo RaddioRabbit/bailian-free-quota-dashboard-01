@@ -1,0 +1,500 @@
+{
+  "models": [
+    {
+      "id": "qwen3.6-plus-2026-04-02",
+      "modelName": "Qwen3.6-Plus-2026-04-02",
+      "provider": "Qwen",
+      "description": "Qwen3.6原生视觉语言系列Plus模型，展现出与当前顶尖前沿模型相媲美的卓越性能，模型效果相较3.5系列显著提升。模型在Agentic coding、前端编程、Vibe coding等代码能力、多模态万物识别、OCR、物体定位等能力上显著增强。该版本为2026年4月2日快照。",
+      "capabilityTags": [
+        "文本生成",
+        "深度思考",
+        "视觉理解",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-07-01T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-plus",
+      "modelName": "Qwen3.5-Plus",
+      "provider": "Qwen",
+      "description": "Qwen3.5原生视觉语言系列Plus模型，基于混合架构设计，融合了线性注意力机制与稀疏混合专家模型，实现了更高的推理效率。在多项任务评测中，3.5系列均展现出与当前顶尖前沿模型相媲美的卓越性能，模型效果在纯文本与多模态方面相较3系列均实现飞跃式进步。",
+      "capabilityTags": [
+        "文本生成",
+        "深度思考",
+        "视觉理解",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 46738,
+      "remainingQuota": 953262,
+      "expiresAt": "2026-05-17T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.6-plus",
+      "modelName": "Qwen3.6-Plus",
+      "provider": "Qwen",
+      "description": "Qwen3.6原生视觉语言系列Plus模型，展现出与当前顶尖前沿模型相媲美的卓越性能，模型效果相较3.5系列显著提升。模型在Agentic coding、前端编程、Vibe coding等代码能力、多模态万物识别、OCR、物体定位等能力上显著增强。",
+      "capabilityTags": [
+        "文本生成",
+        "深度思考",
+        "视觉理解",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 885367,
+      "remainingQuota": 114633,
+      "expiresAt": "2026-07-01T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "wan2.7-i2v",
+      "modelName": "Wan2.7-图生视频",
+      "provider": "wan",
+      "description": "万相2.7-图生视频，演绎能力全面升级，文戏情感细腻自然，动作戏激烈拳拳到肉，搭配更富有戏剧性和节奏感的镜头切换，实现更强表演能力。",
+      "capabilityTags": [
+        "文本生成",
+        "深度思考",
+        "视觉理解",
+        "全模态"
+      ],
+      "totalQuota": 50,
+      "usedQuota": 0,
+      "remainingQuota": 50,
+      "expiresAt": "2026-06-30T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.6-max-preview",
+      "modelName": "Qwen3.6-Max-Preview",
+      "provider": "Qwen",
+      "description": "Qwen3.6系列中规模最大、综合能力最强的Max模型Preview版本，当前开放纯文本模型能力供体验。相较于此前发布的Qwen3-Max和Qwen3.6-Plus，本模型在vibe coding能力上进一步提升、coding agent执行更加高效、前端编程开发能力显著提升；长尾知识能力进一步升级。",
+      "capabilityTags": [
+        "深度思考",
+        "文本生成",
+        "视觉理解",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-07-19T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.6-flash",
+      "modelName": "Qwen3.6-Flash",
+      "provider": "Qwen",
+      "description": "Qwen3.6原生视觉语言系列Flash模型，模型效果相较3.5-Flash显著提升。本模型重点提升agentic coding能力（在多项代码智能体基准上大幅超越前代）、数学推理和代码推理能力；视觉方面在空间智能能力上显著增强，物体定位与目标检测提升尤为突出。",
+      "capabilityTags": [
+        "深度思考",
+        "视觉理解",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 201247,
+      "remainingQuota": 798753,
+      "expiresAt": "2026-07-16T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.6-flash-2026-04-16",
+      "modelName": "Qwen3.6-Flash-2026-04-16",
+      "provider": "Qwen",
+      "description": "Qwen3.6原生视觉语言系列Flash模型，模型效果相较3.5-Flash显著提升。本模型重点提升agentic coding能力（在多项代码智能体基准上大幅超越前代）、数学推理和代码推理能力；视觉方面在空间智能能力上显著增强，物体定位与目标检测提升尤为突出。该版本为2026年4月16日快照。",
+      "capabilityTags": [
+        "深度思考",
+        "视觉理解",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-07-16T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.6-35b-a3b",
+      "modelName": "Qwen3.6-35B-A3B",
+      "provider": "Qwen",
+      "description": "Qwen3.6系列35B-A3B原生视觉语言模型，基于混合架构设计，融合了线性注意力机制与稀疏混合专家模型，实现了更高的推理效率。模型效果相较3.5-35B-A3B显著提升了agentic coding能力、数学推理和代码推理能力、空间智能能力、物体定位与目标检测能力。",
+      "capabilityTags": [
+        "视觉理解",
+        "文本生成",
+        "深度思考",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-07-16T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.6-27b",
+      "modelName": "Qwen3.6-27B",
+      "provider": "Qwen",
+      "description": "Qwen3.6系列27B原生视觉语言Dense模型，模型效果相较3.5-27B重点提升了Agentic coding能力、模型STEM与推理能力进一步增强；视觉模态方面在空间智能、物体定位与检测能力上显著增强，视频理解、文档OCR及视觉Agent能力稳步提升。",
+      "capabilityTags": [
+        "深度思考",
+        "视觉理解",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-07-22T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-flash",
+      "modelName": "Qwen3.5-Flash",
+      "provider": "Qwen",
+      "description": "Qwen3.5原生视觉语言系列Flash模型，基于混合架构设计，融合了线性注意力机制与稀疏混合专家模型，实现了更高的推理效率。模型效果在纯文本与多模态方面相较3系列均实现飞跃式进步；响应速度快，兼具推理速度和性能。",
+      "capabilityTags": [
+        "深度思考",
+        "视觉理解",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 33397,
+      "remainingQuota": 966603,
+      "expiresAt": "2026-05-24T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-plus-2026-02-15",
+      "modelName": "Qwen3.5-Plus-2026-02-15",
+      "provider": "Qwen",
+      "description": "Qwen3.5原生视觉语言系列Plus模型，基于混合架构设计，融合了线性注意力机制与稀疏混合专家模型，实现了更高的推理效率。在多项任务评测中，3.5系列均展现出与当前顶尖前沿模型相媲美的卓越性能，模型效果在纯文本与多模态方面相较3系列均实现飞跃式进步。该版本为2026年2月15日快照。",
+      "capabilityTags": [
+        "深度思考",
+        "视觉理解",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-05-17T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-flash-2026-02-23",
+      "modelName": "Qwen3.5-Flash-2026-02-23",
+      "provider": "Qwen",
+      "description": "Qwen3.5原生视觉语言系列Flash模型，基于混合架构设计，融合了线性注意力机制与稀疏混合专家模型，实现了更高的推理效率。模型效果在纯文本与多模态方面相较3系列均实现飞跃式进步；响应速度快，兼具推理速度和性能。该版本为2026年2月23日快照。",
+      "capabilityTags": [
+        "视觉理解",
+        "深度思考",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-05-24T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-35b-a3b",
+      "modelName": "Qwen3.5-35B-A3B",
+      "provider": "Qwen",
+      "description": "Qwen3.5系列35B-A3B原生视觉语言模型，基于混合架构设计，融合了线性注意力机制与稀疏混合专家模型，实现了更高的推理效率。该模型的综合表现接近于Qwen3.5-27B。",
+      "capabilityTags": [
+        "深度思考",
+        "视觉理解",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 69372,
+      "remainingQuota": 930628,
+      "expiresAt": "2026-05-24T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-122b-a10b",
+      "modelName": "Qwen3.5-122B-A10B",
+      "provider": "Qwen",
+      "description": "Qwen3.5系列122B-A10B原生视觉语言模型，基于混合架构设计，融合了线性注意力机制与稀疏混合专家模型，实现了更高的推理效率。该模型的综合表现仅次于Qwen3.5-397B-A17B，文本能力显著优于Qwen3-235B-2507，视觉能力优于Qwen3-VL-235B。",
+      "capabilityTags": [
+        "深度思考",
+        "视觉理解",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-05-24T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-397b-a17b",
+      "modelName": "Qwen3.5-397B-A17B",
+      "provider": "Qwen",
+      "description": "Qwen3.5系列397B-A17B原生视觉语言模型，基于混合架构设计，融合了线性注意力机制与稀疏混合专家模型，实现了更高的推理效率。在语言理解、逻辑推理、代码生成、智能体任务、图像理解、视频理解、图形用户界面（GUI）等多种任务中，均展现出与当前顶尖前沿模型相媲美的卓越性能。具备强大的代码生成与智能体能力，对于各类智能体场景具有良好的泛化性。",
+      "capabilityTags": [
+        "深度思考",
+        "视觉理解",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-05-17T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-27b",
+      "modelName": "Qwen3.5-27B",
+      "provider": "Qwen",
+      "description": "Qwen3.5系列27B原生视觉语言Dense模型，融合了线性注意力机制；响应速度快，兼具推理速度和性能。该模型的综合能力接近于Qwen3.5-122B-A10B。",
+      "capabilityTags": [
+        "深度思考",
+        "视觉理解",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-05-24T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3-max-2026-01-23",
+      "modelName": "Qwen3-Max-2026-01-23",
+      "provider": "Qwen",
+      "description": "千问3系列Max模型，相较2025年9月23日快照，此版本实现思考模式和非思考模式的有效融合，模型整体效果得到全方位的大幅度提升。在思考模式下，同时发布Web搜索、Web信息提取和代码解释器工具能力，使得模型在慢思考的同时，能够通过引入外部工具，以更高的准确性解决更有难度的问题。此版本为2026年1月23日快照。",
+      "capabilityTags": [
+        "文本生成",
+        "深度思考",
+        "视觉理解",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-04-26T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-omni-flash",
+      "modelName": "Qwen3.5-Omni-Flash",
+      "provider": "Qwen",
+      "description": "qwen3.5-omni-flash-2026-03-15",
+      "capabilityTags": [
+        "全模态",
+        "文本生成",
+        "深度思考",
+        "视觉理解"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-06-22T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-omni-flash-2026-03-15",
+      "modelName": "Qwen3.5-Omni-Flash-2026-03-15",
+      "provider": "Qwen",
+      "description": "Qwen3.5-Omni是Qwen最新一代全模态大模型，支持文本，图片，音频，音视频理解与交互。作为 Qwen3-Omni 的全面进化版本， 支持超过 10 小时的音频理解及超过 400 秒的 720P（1 FPS）音视频理解与对话，并进一步拓展语言范围，支持60+种语言音频输入，30+语言语音输出，并且具备强大的结构化音视频理解能力，广泛应用于文本创作、语音助手、多媒体分析等场景，提供自然流畅的多模态理解与交互体验。该版本为2026年3月15日快照。",
+      "capabilityTags": [
+        "全模态",
+        "文本生成",
+        "深度思考",
+        "视觉理解"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-06-22T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-omni-plus-2026-03-15",
+      "modelName": "Qwen3.5-Omni-Plus-2026-03-15",
+      "provider": "Qwen",
+      "description": "Qwen3.5-Omni是Qwen最新一代全模态大模型，支持文本，图片，音频，音视频理解与交互。作为 Qwen3-Omni 的全面进化版本， 支持超过 10 小时的音频理解及超过 400 秒的 720P（1 FPS）音视频理解与对话，并进一步拓展语言范围，支持60+种语言音频输入，30+语言语音输出，并且具备强大的结构化音视频理解能力，广泛应用于文本创作、语音助手、多媒体分析等场景，提供自然流畅的多模态理解与交互体验。该版本为2026年3月15日快照。",
+      "capabilityTags": [
+        "全模态",
+        "文本生成",
+        "深度思考",
+        "视觉理解"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-06-22T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3.5-omni-plus",
+      "modelName": "Qwen3.5-Omni-Plus",
+      "provider": "Qwen",
+      "description": "qwen3.5-omni-plus-2026-03-15",
+      "capabilityTags": [
+        "全模态",
+        "文本生成",
+        "深度思考",
+        "视觉理解"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-06-22T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3-vl-flash-2026-01-22",
+      "modelName": "Qwen3-VL-Flash-2026-01-22",
+      "provider": "Qwen",
+      "description": "Qwen3系列小尺寸视觉理解模型，实现思考模式和非思考模式的有效融合，相较于2025年10月15日快照，模型整体效果有大幅提升：在通用视觉识别与推理方面有增强；在安防、巡店、巡检、拍照解题等业务场景识别效果上提升显著。此版本为2026年1月22日快照版本。",
+      "capabilityTags": [
+        "视觉理解",
+        "文本生成",
+        "深度思考",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-04-26T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3-coder-next",
+      "modelName": "通义千问3-Coder-Next",
+      "provider": "Qwen",
+      "description": "Qwen3系列新一代代码生成模型，效果接近Qwen3-Coder-Plus兼具更优性能。模型重点优化仓库级别理解、支持多轮工具交互、提升对于agentic coding类工具的适配能力。",
+      "capabilityTags": [
+        "文本生成",
+        "深度思考",
+        "视觉理解",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-05-04T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "glm-5.1",
+      "modelName": "GLM-5.1",
+      "provider": "Zhipu AI",
+      "description": "GLM-5.1是智谱AI推出的面向长程任务（Long Horizon Task）设计的模型，总参数744B，支持200K超长上下文，最大输出 128K tokens。拥有强大逻辑推理、长文本理解与代码生成能力、兼顾性能与推理效率；在多任务基准中表现优异，适用于智能交互、企业应用、开发辅助等场景。",
+      "capabilityTags": [
+        "文本生成",
+        "深度思考",
+        "视觉理解",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 874775,
+      "remainingQuota": 125225,
+      "expiresAt": "2026-07-13T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "kimi-k2.6",
+      "modelName": "Kimi-K2.6",
+      "provider": "Moonshot AI",
+      "description": "kimi-k2.6是Kimi最新最智能的模型，具备更强更稳的长程代码编写能力，指令遵循和自我纠错能力显著提升，同时支持文本、图片与视频输入，思考与非思考模式，对话与Agent任务。",
+      "capabilityTags": [
+        "深度思考",
+        "视觉理解",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-07-20T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "kimi-k2.5",
+      "modelName": "Kimi-K2.5",
+      "provider": "Moonshot AI",
+      "description": "kimi-k2.5是月之暗面迄今发布最全能的模型，原生多模态架构设计，同时支持视觉与文本输入、思考与非思考模式、对话与Agent任务。",
+      "capabilityTags": [
+        "深度思考",
+        "视觉理解",
+        "文本生成",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 742476,
+      "remainingQuota": 257524,
+      "expiresAt": "2026-04-30T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen-flash-character",
+      "modelName": "Qwen-Flash-Character",
+      "provider": "Qwen",
+      "description": "千问系列多语言角色扮演模型，本模型是动态更新版本，模型更新会提前通知，适合拟人化的角色扮演，同时优化了限定人设指令遵循、话题推进、倾听共情等能力，支持个性化角色的深度还原。",
+      "capabilityTags": [
+        "文本生成",
+        "深度思考",
+        "视觉理解",
+        "全模态"
+      ],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-04-27T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "tongyi-embedding-vision-flash-2026-03-06",
+      "modelName": "通义多模态向量-Flash-2026-03-06",
+      "provider": "qwen-domain-model",
+      "description": "Tongyi-Embedding-Vision是基于LLM底座的视觉多模态表征模型，支持文本、图像、视频3种模态，具有以视觉为中心、全场景性能优异、高性价比的特点，适用于以图搜图、以文搜图、以文搜视频、以视频搜视频、以文搜文、以文搜图文等下游多样化任务场景。本模型（tongyi-embedding-vision-flash）是轻量化版本，具备极高性价比。\n\n2026-03-06版本在保留极致性价比优势的同时，基于Qwen3底座实现了效果与功能全面升级，包括全场景性能提升、多分辨率模式/多向量维度/多语言能力/融合向量等能力的支持。",
+      "capabilityTags": [],
+      "totalQuota": 1000000,
+      "usedQuota": 741868,
+      "remainingQuota": 258132,
+      "expiresAt": "2026-06-18T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "tongyi-embedding-vision-plus-2026-03-06",
+      "modelName": "通义多模态向量-Plus-2026-03-06",
+      "provider": "qwen-domain-model",
+      "description": "Tongyi-Embedding-Vision是基于LLM底座的视觉多模态表征模型，支持文本、图像、视频3种模态，具有以视觉为中心、全场景性能优异、高性价比的特点，适用于以图搜图、以文搜图、以文搜视频、以视频搜视频、以文搜文、以文搜图文等下游多样化任务场景。\n\n2026-03-06版本在保留极致性价比优势的同时，基于Qwen3底座实现了效果与功能全面升级，包括全场景性能提升、多分辨率模式/多向量维度/多语言能力/融合向量等能力的支持。",
+      "capabilityTags": [],
+      "totalQuota": 1000000,
+      "usedQuota": 0,
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-06-18T16:00:00.000Z",
+      "unit": "tokens"
+    },
+    {
+      "id": "qwen3-vl-embedding",
+      "modelName": "Qwen3-VL-Embedding",
+      "provider": "Qwen",
+      "description": "基于Qwen3-VL底座训练的统一多模态向量模型，支持文本、图片、视频单模态/混合模态输入，输出统一表征向量，适用于跨模态检索、图搜、视频检索、图像聚类、复杂多模态信息检索、打标等场景",
+      "capabilityTags": [],
+      "totalQuota": 1000000,
+      "usedQuota": 983252,
+      "remainingQuota": 16748,
+      "expiresAt": "2026-04-27T16:00:00.000Z",
+      "unit": "tokens"
+    }
+  ],
+  "updatedAt": "2026-04-23T04:19:12.335Z"
+}

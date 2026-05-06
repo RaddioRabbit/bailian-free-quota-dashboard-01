@@ -1,0 +1,7 @@
+node_modules
+.next
+.git
+.session.json
+data
+.env.local
+.DS_Store

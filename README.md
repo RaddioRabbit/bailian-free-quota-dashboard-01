@@ -89,26 +89,62 @@ https://bailian.console.aliyun.com/cn-beijing#/model-market/all?providers=qwen%2
 
 架构说明：Next.js 前端运行在 Docker 容器中，Playwright 抓取继续在宿主机（本机）运行，通过共享 `./data` 目录交换数据。
 
-#### 部署步骤
+> **重要**：Docker 容器只负责展示数据，登录和抓取必须在宿主机完成。容器通过检查 `data/quotas.json` 文件是否存在来判断是否已登录，不读取 `.session.json`。
+
+#### 完整使用流程（新电脑首次）
+
+**Step 1：启动 Docker 容器**
 
 ```bash
-# 1. 构建并启动 Docker 容器
 docker-compose up -d --build
-
-# 2. 浏览器访问 http://localhost:3010
 ```
+
+浏览器访问 http://localhost:3010，此时页面显示「暂无数据」。
+
+**Step 2：宿主机安装抓取环境**
+
+```bash
+# 安装项目依赖（包含 Playwright）
+npm install
+
+# 安装 Chromium 浏览器本体
+npx playwright install chromium
+```
+
+**Step 3：配置抓取页面（可选）**
+
+项目已自带默认的模型广场链接。如需调整，访问 http://localhost:3010/source-config，粘贴阿里云百炼模型广场页面的 URL。
+
+**Step 4：首次登录并抓取**
+
+```bash
+npm run fetch-data
+```
+
+1. 脚本检查 session → 没有则弹出 Chromium 浏览器
+2. 在浏览器中完成阿里云登录（密码或扫码）
+3. 登录成功后**手动关闭浏览器窗口**
+4. 脚本自动抓取数据并写入 `data/quotas.json`
+
+**Step 5：刷新页面查看**
+
+回到浏览器，按 **F5** 刷新 http://localhost:3010，即可看到最新额度数据。
+
+#### 日常刷新数据
+
+```bash
+npm run fetch-data
+```
+
+然后浏览器 F5 刷新页面。已有 session 时无需重复登录。
+
+---
 
 `docker-compose.yml` 关键配置：
 
 - 端口映射 `3010:3010`
 - 共享卷 `./data:/app/data:ro`（容器只读挂载）
 - 环境变量 `DATA_DIR=/app/data`
-
-#### Docker 模式下的登录状态检测
-
-容器通过检查 `DATA_DIR` 环境变量 + `quotas.json` 文件存在性来判断是否已登录，不需要 `.session.json`。
-
-因此 Docker 模式下需要先在宿主机运行一次数据抓取（见下方「独立数据抓取脚本」），生成 `data/quotas.json` 后，容器才能正常显示数据。
 
 ---
 
@@ -122,6 +158,7 @@ npm run fetch-data
 
 **使用场景：**
 
+- **Docker 模式下更新数据的唯一方式**（容器内无法运行浏览器）
 - 前端在 Docker 运行时，避免端口冲突
 - 定时自动抓取数据
 
@@ -180,13 +217,24 @@ launchctl unload ~/Library/LaunchAgents/com.bailian.fetch.plist
 
 ### 迁移到新电脑
 
-1. 安装 Node.js 20+ 和 Docker Desktop
+#### Docker 模式（推荐）
+
+1. 安装 Docker Desktop
+2. 复制项目文件夹（建议带上 `data/quotas.json` 和 `.session.json`，避免重新登录和配置）
+3. `docker-compose up -d --build`
+4. 浏览器访问 http://localhost:3010
+5. 如果数据过期，运行 `npm run fetch-data` 刷新数据，然后 F5 刷新页面
+
+> 如果是全新电脑且没有 Node.js 环境，需要先安装 Node.js 20+，然后执行 `npm install && npx playwright install chromium`，才能运行 `npm run fetch-data`。
+
+#### 本地模式
+
+1. 安装 Node.js 20+
 2. 复制项目文件夹（带上 `data/quotas.json` 和 `.session.json`）
 3. `npm install && npx playwright install chromium`
-4. `docker-compose up -d --build`
+4. `npm run dev`
 5. 浏览器访问 http://localhost:3010
-6. 如果 session 失效，运行 `npm run fetch-data` 重新登录
-7. 如果 source-config 配置丢失，访问 `/source-config` 重新粘贴模型广场 URL
+6. 如果 source-config 配置丢失，访问 `/source-config` 重新粘贴模型广场 URL
 
 ---
 
@@ -257,6 +305,9 @@ A: 取决于阿里云账号的 session 有效期，通常为数天到数周。�
 
 **Q: 如何退出登录？**
 A: 登录状态下，点击右上角「**退出登录**」按钮，会清除本地 session 和数据缓存。
+
+**Q: Docker 模式下点击页面「登录」按钮没反应？**
+A: Docker 容器内无法运行浏览器，页面上的登录按钮在 Docker 模式下不会生效。请在宿主机终端运行 `npm run fetch-data` 完成登录和抓取。
 
 **Q: Docker 模式下页面显示"未登录"？**
 A: 确保已在宿主机运行 `npm run fetch-data` 生成 `data/quotas.json` 文件。Docker 容器通过检查该文件判断登录状态，不读取 `.session.json`。

@@ -9,6 +9,7 @@ import { fetchQuotaFromConsole, BailianScraperError } from "./bailian-scraper";
 import { consoleScraper } from "./console-scraper";
 import { filterObservedModels } from "./model-filters";
 import { getSourceUrlsPreview, loadSourceConfig } from "./source-config";
+import { loadQuotaDataFromFile, quotaFileExists } from "./file-loader";
 
 // 缓存配置
 interface CacheConfig {
@@ -144,6 +145,16 @@ export async function getDashboardData(
   const sourceUrls = sourceConfig.sourceUrls;
   const sourceMetadata = buildSourceMetadata(sourceUrls);
   const hasConsoleSession = consoleScraper.sessionExists();
+
+  // Docker 模式：优先从共享数据目录读取配额文件（Playwright 在宿主机运行）
+  if (process.env.DATA_DIR && quotaFileExists()) {
+    const fileData = loadQuotaDataFromFile();
+    return {
+      ...fileData,
+      ...sourceMetadata,
+    };
+  }
+
   const requestKey = hasConsoleSession
     ? `__console_session__:${sourceUrls.join("|") || "__no_sources__"}`
     : (effectiveApiKey || "__mock__");

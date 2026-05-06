@@ -1,0 +1,10 @@
+services:
+  dashboard:
+    build: .
+    ports:
+      - "3010:3010"
+    volumes:
+      - ./data:/app/data:ro
+    environment:
+      - DATA_DIR=/app/data
+    restart: unless-stopped

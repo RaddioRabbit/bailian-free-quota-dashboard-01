@@ -5,9 +5,19 @@
 import { NextResponse } from "next/server";
 import { consoleScraper } from "@/lib/data/console-scraper";
 import { clearCache } from "@/lib/data/api";
+import { quotaFileExists } from "@/lib/data/file-loader";
 
 export async function GET() {
   try {
+    // Docker 模式：数据文件存在即视为已登录（数据来自宿主机抓取）
+    if (process.env.DATA_DIR && quotaFileExists()) {
+      return NextResponse.json({
+        loggedIn: true,
+        reason: null,
+        mode: "docker",
+      });
+    }
+
     const hasSession = consoleScraper.sessionExists();
     return NextResponse.json({
       loggedIn: hasSession,
