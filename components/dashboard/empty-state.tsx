@@ -8,9 +8,9 @@ export function EmptyState() {
       <div className="rounded-full bg-muted p-4">
         <Inbox className="h-8 w-8 text-muted-foreground" />
       </div>
-      <h3 className="mt-4 text-lg font-medium">没有找到符合条件的模型</h3>
+      <h3 className="mt-4 text-lg font-medium">没有找到可展示的模型额度</h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        请尝试调整筛选条件或搜索关键词
+        当前抓取页面没有账号可用的免费额度数据，或筛选条件没有匹配结果
       </p>
     </div>
   );

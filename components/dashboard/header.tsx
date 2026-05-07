@@ -18,6 +18,8 @@ interface HeaderProps {
   isLoggedIn?: boolean;
   authChecked?: boolean;
   onLoginStarted?: () => void;
+  onLoggedOut?: () => void;
+  mode?: "trigger" | "direct" | "docker";
 }
 
 export function DashboardHeader({
@@ -29,6 +31,8 @@ export function DashboardHeader({
   isLoggedIn = false,
   authChecked = false,
   onLoginStarted,
+  onLoggedOut,
+  mode,
 }: HeaderProps) {
   const [authLoading, setAuthLoading] = useState(false);
   const showLogout = authChecked && isLoggedIn;
@@ -66,7 +70,7 @@ export function DashboardHeader({
         body: JSON.stringify({ action: "logout" }),
       });
       toast.success("已退出登录");
-      onRefresh?.();
+      onLoggedOut?.();
     } catch {
       toast.error("退出登录失败");
     } finally {
@@ -89,6 +93,18 @@ export function DashboardHeader({
               }`}
             >
               {isLoggedIn ? "已登录" : "未登录"}
+            </span>
+          )}
+          {mode && (
+            <span
+              className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                mode === "trigger" || mode === "docker"
+                  ? "bg-purple-100 text-purple-700"
+                  : "bg-orange-100 text-orange-700"
+              }`}
+              title={mode === "trigger" || mode === "docker" ? "触发模式：抓取由宿主机 fetch-watcher 执行" : "直连模式：抓取由本进程直接执行"}
+            >
+              {mode === "trigger" || mode === "docker" ? "触发模式" : "直连模式"}
             </span>
           )}
           {isFetchingRealData && (

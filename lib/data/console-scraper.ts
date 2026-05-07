@@ -51,6 +51,11 @@ interface DiscoveredModelMeta {
   capabilityTags?: string[];
 }
 
+interface SourceModelFilters {
+  providerCodes: Set<string>;
+  capabilityTags: Set<string>;
+}
+
 /** Cookie names that indicate a fully authenticated Aliyun session */
 const STRONG_AUTH_COOKIE_INDICATORS = [
   "login_aliyunid_ticket",
@@ -67,6 +72,14 @@ const WEAK_AUTH_COOKIE_INDICATORS = [
 
 function normalizeModelId(value: string): string {
   return value.toLowerCase().trim();
+}
+
+function normalizeFilterValue(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, "-");
+}
+
+function compactFilterValue(value: string): string {
+  return normalizeFilterValue(value).replace(/[-_]/g, "");
 }
 
 function isLikelyModelId(value: string): boolean {
@@ -116,6 +129,37 @@ function normalizeProviderLabel(provider: string | null, modelId: string): strin
 
   const inferredProvider = Object.entries(PROVIDER_LABELS).find(([key]) => modelId.includes(key));
   return inferredProvider?.[1] || "阿里云百炼";
+}
+
+function parseHashSearchParams(sourceUrl: string): URLSearchParams {
+  try {
+    const url = new URL(sourceUrl);
+    const hash = url.hash.startsWith("#") ? url.hash.slice(1) : url.hash;
+    const hashQuery = hash.includes("?") ? hash.split("?")[1] : "";
+    return new URLSearchParams(hashQuery);
+  } catch {
+    return new URLSearchParams();
+  }
+}
+
+function parseSourceModelFilters(sourceUrl: string): SourceModelFilters {
+  const params = parseHashSearchParams(sourceUrl);
+  const providerCodes = new Set<string>();
+  const providers = params.get("providers");
+
+  if (providers) {
+    for (const provider of providers.split(",")) {
+      const normalized = normalizeFilterValue(provider);
+      if (normalized) {
+        providerCodes.add(normalized);
+      }
+    }
+  }
+
+  return {
+    providerCodes,
+    capabilityTags: new Set(parseCapabilitiesFromSourceUrl(sourceUrl)),
+  };
 }
 
 export class BailianConsoleScraper {
@@ -224,18 +268,46 @@ export class BailianConsoleScraper {
 
     if (!authCookieFound) {
       console.warn(
-        "[BailianScraper] Strong auth cookies were not detected, but the protected console page is accessible. Continuing with saved session."
+        "[BailianScraper] Strong auth cookies were not detected, but the protected console page is accessible."
       );
     }
 
     if (!apiAuthenticated) {
-      console.warn(
-        "[BailianScraper] Quota API probe failed on the validation page. Continuing because the protected console page is accessible."
+      throw new Error(
+        "Login incomplete: quota API probe failed. " +
+        "The session may not have full authentication. " +
+        "Please finish logging in and try again."
       );
     }
 
     await context.storageState({ path: SESSION_PATH });
     console.log(`[BailianScraper] Session saved to ${SESSION_PATH}`);
+
+    // Verify the saved session can be reloaded and still pass API probe.
+    // This catches cases where storageState() drops auth cookies.
+    console.log("[BailianScraper] Verifying saved session...");
+    const verifyBrowser = await chromium.launch({
+      headless: true,
+      executablePath: this._findChromiumPath(),
+    });
+    try {
+      const verifyContext = await this._contextWithSession(verifyBrowser);
+      const verifyPage = await verifyContext.newPage();
+      await this._navigateToConsole(verifyPage, DEFAULT_MODEL_MARKET_URL);
+      const verified = await this._probeAuthenticatedQuotaApi(verifyPage);
+      if (!verified) {
+        this.clearSession();
+        throw new Error(
+          "Login failed: session was saved but could not be reloaded correctly. " +
+          "This usually means authentication cookies were not persisted. " +
+          "Please try logging in again."
+        );
+      }
+      console.log("[BailianScraper] Saved session verified successfully.");
+    } finally {
+      await verifyBrowser.close();
+    }
+
     console.log("[BailianScraper] ============================================");
     console.log("[BailianScraper] Login successful! Session saved.");
     console.log("[BailianScraper] IMPORTANT: Please close the browser window manually when ready.");
@@ -292,9 +364,11 @@ export class BailianConsoleScraper {
 
       const apiAuthenticated = await this._probeAuthenticatedQuotaApi(page);
       if (!apiAuthenticated) {
-        console.warn(
-          "[BailianScraper] Session validation: quota API probe failed, but protected console access still works."
+        console.log(
+          "[BailianScraper] Session invalid: quota API probe failed."
         );
+        this.clearSession();
+        return false;
       }
 
       console.log("[BailianScraper] Session is valid.");
@@ -438,10 +512,8 @@ export class BailianConsoleScraper {
       console.log("[BailianScraper] ============================================");
 
       if (quotas.length === 0) {
-        throw new Error(
-          "No free quota data found across all models. " +
-          "Either session is expired or models have no active free tiers. " +
-          "Try running with DEBUG_BAILIAN=1 for more details."
+        console.log(
+          "[BailianScraper] No account-scoped free quota data found for the configured model page."
         );
       }
 
@@ -449,9 +521,12 @@ export class BailianConsoleScraper {
       return quotas;
     } catch (e) {
       if (e instanceof BailianConsoleSessionExpiredError) {
-        console.log("[BailianScraper] Session expired during scraping. Clearing session file.");
-        this.clearSession();
-        throw new Error("Session expired. Please login again via /api/auth.");
+        // 不再自动删 session 文件：API 偶发 NotLogined 不一定代表 session 真的过期；
+        // 把判断交给调用方，让用户主动重登再清，避免"刚扫完码就被踢"
+        console.log("[BailianScraper] Scrape encountered NotLogined; bubbling up without clearing session.");
+        throw new BailianConsoleSessionExpiredError(
+          "Session expired. Please login again via /api/auth."
+        );
       }
       throw e;
     } finally {
@@ -478,6 +553,7 @@ export class BailianConsoleScraper {
   ): Promise<Map<string, DiscoveredModelMeta>> {
     const discoveredModels = new Map<string, DiscoveredModelMeta>();
     const sourceCapabilityTags = parseCapabilitiesFromSourceUrl(sourceUrl);
+    const sourceFilters = parseSourceModelFilters(sourceUrl);
 
     // Set up response listener BEFORE navigation
     const responseHandler = async (response: PwResponse) => {
@@ -561,11 +637,140 @@ export class BailianConsoleScraper {
       console.log(
         `[BailianScraper] After scrolling: ${discoveredModels.size} models from API interception`
       );
+
+      const visibleModelIds = await this._extractVisibleModelIdsFromPage(page);
+      if (visibleModelIds.size > 0) {
+        const scopedModels = new Map<string, DiscoveredModelMeta>();
+        for (const modelId of Array.from(visibleModelIds)) {
+          const existing = discoveredModels.get(modelId);
+          this._upsertDiscoveredModel(scopedModels, existing || { id: modelId });
+        }
+        console.log(
+          `[BailianScraper] Scoped discovery to ${scopedModels.size} visible model cards: ${Array.from(visibleModelIds).join(", ")}`
+        );
+        return scopedModels;
+      }
+
+      const filteredModels = this._filterDiscoveredModelsBySource(discoveredModels, sourceFilters);
+      if (filteredModels.size !== discoveredModels.size) {
+        console.log(
+          `[BailianScraper] Scoped discovery by source URL filters: ${filteredModels.size}/${discoveredModels.size} models`
+        );
+        return filteredModels;
+      }
     } finally {
       page.removeListener("response", responseHandler);
     }
 
     return discoveredModels;
+  }
+
+  private async _extractVisibleModelIdsFromPage(page: Page): Promise<Set<string>> {
+    const modelIds = await page.evaluate(() => {
+      const ids = new Set<string>();
+      const detailPattern = /model-market\/detail\/([^?&#\s"']+)/;
+
+      const addCandidate = (rawValue: string | null | undefined) => {
+        if (!rawValue) return;
+        const match = rawValue.match(detailPattern);
+        if (!match?.[1]) return;
+        try {
+          ids.add(decodeURIComponent(match[1]).toLowerCase().trim());
+        } catch {
+          ids.add(match[1].toLowerCase().trim());
+        }
+      };
+
+      for (const anchor of Array.from(document.querySelectorAll("a[href]"))) {
+        const element = anchor as HTMLAnchorElement;
+        const rect = element.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        addCandidate(element.href);
+        addCandidate(element.getAttribute("href"));
+      }
+
+      for (const element of Array.from(document.querySelectorAll("[data-model], [data-model-id], [data-modelid]"))) {
+        const htmlElement = element as HTMLElement;
+        const rect = htmlElement.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        const rawValue =
+          htmlElement.dataset.model ||
+          htmlElement.dataset.modelId ||
+          htmlElement.dataset.modelid ||
+          null;
+        if (rawValue) {
+          ids.add(rawValue.toLowerCase().trim());
+        }
+      }
+
+      return Array.from(ids);
+    }).catch(() => []);
+
+    const visibleModelIds = new Set<string>();
+    for (const modelId of modelIds) {
+      if (isLikelyModelId(modelId)) {
+        visibleModelIds.add(normalizeModelId(modelId));
+      }
+    }
+    return visibleModelIds;
+  }
+
+  private _filterDiscoveredModelsBySource(
+    models: Map<string, DiscoveredModelMeta>,
+    sourceFilters: SourceModelFilters
+  ): Map<string, DiscoveredModelMeta> {
+    if (sourceFilters.providerCodes.size === 0 && sourceFilters.capabilityTags.size === 0) {
+      return models;
+    }
+
+    const filtered = new Map<string, DiscoveredModelMeta>();
+    for (const model of Array.from(models.values())) {
+      if (this._matchesSourceFilters(model, sourceFilters)) {
+        this._upsertDiscoveredModel(filtered, model);
+      }
+    }
+    return filtered.size > 0 ? filtered : models;
+  }
+
+  private _matchesSourceFilters(
+    model: DiscoveredModelMeta,
+    sourceFilters: SourceModelFilters
+  ): boolean {
+    if (sourceFilters.providerCodes.size > 0) {
+      const providerCandidates = [
+        model.provider,
+        model.id.split("/")[0],
+        model.id.split("-")[0],
+      ]
+        .filter((value): value is string => Boolean(value))
+        .map((value) => normalizeFilterValue(value));
+
+      const matchesProvider = providerCandidates.some((candidate) => {
+        if (sourceFilters.providerCodes.has(candidate)) return true;
+        const compactCandidate = compactFilterValue(candidate);
+        if (Array.from(sourceFilters.providerCodes).some((provider) => compactFilterValue(provider) === compactCandidate)) {
+          return true;
+        }
+        const mappedLabel = PROVIDER_LABELS[candidate];
+        return Boolean(mappedLabel && Array.from(sourceFilters.providerCodes).some(
+          (provider) => compactFilterValue(provider) === compactFilterValue(mappedLabel)
+        ));
+      });
+
+      if (!matchesProvider) {
+        return false;
+      }
+    }
+
+    if (sourceFilters.capabilityTags.size > 0) {
+      const modelTags = new Set(model.capabilityTags || []);
+      const matchesCapability = Array.from(sourceFilters.capabilityTags).some((tag) => modelTags.has(tag));
+      if (!matchesCapability) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**

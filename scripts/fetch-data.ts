@@ -14,6 +14,8 @@
 
 import { consoleScraper } from "@/lib/data/console-scraper";
 import { loadSourceConfig } from "@/lib/data/source-config";
+import { clearLoggedOutMarker } from "@/lib/data/file-loader";
+import { filterModelsBySourceUrls } from "@/lib/data/model-filters";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -26,7 +28,13 @@ async function doScrape(): Promise<number> {
   }
 
   console.log(`\n开始抓取 ${config.sourceUrls.length} 个页面...`);
-  const quotas = await consoleScraper.scrapeQuotas(config.sourceUrls);
+  const scrapedQuotas = await consoleScraper.scrapeQuotas(config.sourceUrls);
+  const quotas = filterModelsBySourceUrls(scrapedQuotas, config.sourceUrls);
+  if (quotas.length !== scrapedQuotas.length) {
+    console.log(
+      `\n按配置页面过滤结果：${scrapedQuotas.length} -> ${quotas.length} 个模型。`
+    );
+  }
   console.log(`\n抓取完成！共 ${quotas.length} 个模型有免费额度数据。`);
 
   const dataDir = path.join(process.cwd(), "data");
@@ -41,6 +49,10 @@ async function doScrape(): Promise<number> {
   };
 
   fs.writeFileSync(dataPath, JSON.stringify(data, null, 2), "utf8");
+
+  // 抓取成功 → 清掉旧 logout marker
+  clearLoggedOutMarker();
+
   console.log(`\n数据已写入：${dataPath}`);
   console.log("Docker 容器会自动读取此文件，刷新 http://localhost:3010 即可查看。");
   return quotas.length;

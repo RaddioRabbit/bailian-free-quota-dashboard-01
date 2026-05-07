@@ -69,8 +69,8 @@ export function SourceConfigPage() {
       }
 
       toast.success("抓取配置已保存");
-      router.push("/");
-      router.refresh();
+      // 带上 ?refresh=1 标记，dashboard 检测到后会自动触发与点击「刷新」等价的抓取流程
+      router.push("/?refresh=1");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "保存抓取配置失败");
     } finally {

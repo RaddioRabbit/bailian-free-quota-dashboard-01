@@ -12,6 +12,7 @@ import { ModelQuota, DashboardData } from "./types";
 
 const DEFAULT_DATA_DIR = "./data";
 const QUOTA_FILENAME = "quotas.json";
+const LOGOUT_MARKER_FILENAME = ".logged-out";
 
 function getDataDir(): string {
   return process.env.DATA_DIR || DEFAULT_DATA_DIR;
@@ -19,6 +20,10 @@ function getDataDir(): string {
 
 function getQuotaFilePath(): string {
   return path.join(getDataDir(), QUOTA_FILENAME);
+}
+
+function getLogoutMarkerPath(): string {
+  return path.join(getDataDir(), LOGOUT_MARKER_FILENAME);
 }
 
 function buildEmptyData(): DashboardData {
@@ -84,4 +89,31 @@ export function loadQuotaDataFromFile(): DashboardData {
  */
 export function quotaFileExists(): boolean {
   return fs.existsSync(getQuotaFilePath());
+}
+
+/**
+ * 登出标记：用于双模式 logout。
+ * 容器侧调用 markLoggedOut 后，auth GET / dashboard data 看到 marker 即视为未登录，
+ * 直到下一次成功抓取或显式登录把 marker 清掉。
+ *
+ * 不删除 quotas.json，避免误操作丢数据；marker 写在共享数据目录，
+ * Docker 模式下宿主机 watcher 也能读到/清除。
+ */
+export function isLoggedOutMarked(): boolean {
+  return fs.existsSync(getLogoutMarkerPath());
+}
+
+export function markLoggedOut(): void {
+  const dir = getDataDir();
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.writeFileSync(getLogoutMarkerPath(), new Date().toISOString(), "utf8");
+}
+
+export function clearLoggedOutMarker(): void {
+  const p = getLogoutMarkerPath();
+  if (fs.existsSync(p)) {
+    fs.unlinkSync(p);
+  }
 }

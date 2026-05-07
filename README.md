@@ -27,12 +27,13 @@
 git clone <repo-url>
 cd bailian-dashboard
 
-# 2. 安装依赖
+# 2. 安装依赖（postinstall 钩子会自动下载 Chromium 浏览器）
 npm install
-
-# 3. 安装 Playwright Chromium（登录功能必须）
-npx playwright install chromium
 ```
+
+> **说明**：`npm install` 完成后，`postinstall` 钩子会自动执行 `playwright install chromium`，
+> 下载 Chromium 浏览器到 `~/Library/Caches/ms-playwright/`（约 250MB）。
+> 如自动下载失败，可手动执行：`npx playwright install chromium`
 
 ## 使用
 
@@ -89,7 +90,7 @@ https://bailian.console.aliyun.com/cn-beijing#/model-market/all?providers=qwen%2
 
 架构说明：Next.js 前端运行在 Docker 容器中，Playwright 抓取继续在宿主机（本机）运行，通过共享 `./data` 目录交换数据。
 
-> **重要**：Docker 容器只负责展示数据，登录和抓取必须在宿主机完成。容器通过检查 `data/quotas.json` 文件是否存在来判断是否已登录，不读取 `.session.json`。
+> **重要**：Docker 容器只负责展示数据与转发请求，登录和抓取必须在宿主机完成。点击页面「**刷新**」按钮时，容器会写入 `data/.fetch-trigger.json` 触发文件，**宿主机的 `npm run fetch-watcher` 守护进程**读取文件后调用 Playwright 完成抓取，结果写回 `data/quotas.json`。
 
 #### 完整使用流程（新电脑首次）
 
@@ -104,47 +105,54 @@ docker-compose up -d --build
 **Step 2：宿主机安装抓取环境**
 
 ```bash
-# 安装项目依赖（包含 Playwright）
+# 安装项目依赖（postinstall 钩子会自动下载 Chromium 浏览器）
 npm install
-
-# 安装 Chromium 浏览器本体
-npx playwright install chromium
 ```
 
-**Step 3：配置抓取页面（可选）**
+> 如果 Chromium 自动下载失败，可手动执行：`npx playwright install chromium`
+
+**Step 3：启动宿主机 watcher 守护进程**（关键）
+
+打开一个新终端，常驻运行：
+
+```bash
+npm run fetch-watcher
+```
+
+> watcher 会监听 `data/.fetch-trigger.json`，容器侧每次点击「刷新」即触发本进程执行抓取。
+> 不启动 watcher 的话，页面点击「刷新」会提示"等待宿主机 watcher 处理超时"。
+
+**Step 4：配置抓取页面（可选）**
 
 项目已自带默认的模型广场链接。如需调整，访问 http://localhost:3010/source-config，粘贴阿里云百炼模型广场页面的 URL。
 
-**Step 4：首次登录并抓取**
+**Step 5：在页面上点击「刷新」完成首次登录与抓取**
 
-```bash
-npm run fetch-data
-```
+回到浏览器 http://localhost:3010，点击右上角「**刷新**」按钮：
 
-1. 脚本检查 session → 没有则弹出 Chromium 浏览器
-2. 在浏览器中完成阿里云登录（密码或扫码）
-3. 登录成功后**手动关闭浏览器窗口**
-4. 脚本自动抓取数据并写入 `data/quotas.json`
-
-**Step 5：刷新页面查看**
-
-回到浏览器，按 **F5** 刷新 http://localhost:3010，即可看到最新额度数据。
+1. 页面提示"正在抓取最新额度数据，预计 30-60 秒…"
+2. 宿主机 watcher 检测到无 session → 自动弹出 Chromium 浏览器
+3. 在弹出窗口中完成阿里云登录（密码或扫码）
+4. 登录完成后**手动关闭浏览器窗口**，watcher 自动继续抓取
+5. 页面自动收到 toast：`已更新 X 个模型，耗时 Y 秒`，列表立即刷新
 
 #### 日常刷新数据
 
+直接点击页面上的「**刷新**」按钮即可。watcher 保持运行的情况下，每次刷新都会自动抓取最新数据并更新页面。
+
+也可以手动跑一次（不依赖页面按钮）：
+
 ```bash
 npm run fetch-data
 ```
-
-然后浏览器 F5 刷新页面。已有 session 时无需重复登录。
 
 ---
 
 `docker-compose.yml` 关键配置：
 
 - 端口映射 `3010:3010`
-- 共享卷 `./data:/app/data:ro`（容器只读挂载）
-- 环境变量 `DATA_DIR=/app/data`
+- 共享卷 `./data:/app/data:rw`（容器需写入 `.fetch-trigger.json` 触发文件）
+- 环境变量 `DATA_DIR=/app/data`、`FETCH_MODE=trigger`（启用 watcher 桥接）
 
 ---
 
@@ -222,16 +230,17 @@ launchctl unload ~/Library/LaunchAgents/com.bailian.fetch.plist
 1. 安装 Docker Desktop
 2. 复制项目文件夹（建议带上 `data/quotas.json` 和 `.session.json`，避免重新登录和配置）
 3. `docker-compose up -d --build`
-4. 浏览器访问 http://localhost:3010
-5. 如果数据过期，运行 `npm run fetch-data` 刷新数据，然后 F5 刷新页面
+4. 宿主机另开终端：`npm install && npm run fetch-watcher`
+5. 浏览器访问 http://localhost:3010
+6. 数据过期或想强制刷新，直接点页面右上角「**刷新**」按钮
 
-> 如果是全新电脑且没有 Node.js 环境，需要先安装 Node.js 20+，然后执行 `npm install && npx playwright install chromium`，才能运行 `npm run fetch-data`。
+> 全新电脑没有 Node.js 时，需要先安装 Node.js 20+，再执行 `npm install`（postinstall 自动下载 Chromium），最后启动 `npm run fetch-watcher` 守护进程。
 
 #### 本地模式
 
 1. 安装 Node.js 20+
 2. 复制项目文件夹（带上 `data/quotas.json` 和 `.session.json`）
-3. `npm install && npx playwright install chromium`
+3. `npm install`（postinstall 自动下载 Chromium）
 4. `npm run dev`
 5. 浏览器访问 http://localhost:3010
 6. 如果 source-config 配置丢失，访问 `/source-config` 重新粘贴模型广场 URL
@@ -263,6 +272,7 @@ cp .env.example .env.local
 | `npm run start` | 启动生产服务器（端口 3010） |
 | `npm run lint` | 运行 ESLint 检查 |
 | `npm run fetch-data` | 独立数据抓取（不启动前端） |
+| `npm run fetch-watcher` | Docker 模式下的宿主机 watcher 守护进程 |
 
 ## 工作原理
 
@@ -280,25 +290,37 @@ Dashboard UI
 数据流（Docker 模式）：
 
 ```
-宿主机: npm run fetch-data
-  → Playwright 抓取 → 写入 ./data/quotas.json
-
-容器: Dashboard UI
-  → GET /api/models
-    → 读取 /app/data/quotas.json（只读挂载）
+宿主机: npm run fetch-watcher（守护进程，监听触发文件）
+                    ↑ ↓
+                    | | 写 data/quotas.json
+                    | |
+容器: Dashboard UI 点击「刷新」
+  → POST /api/fetch-data
+    → 写 data/.fetch-trigger.json (status: pending)
+    → 轮询触发文件直到 done/error
+    → 返回结果给前端
 ```
+
+也支持宿主机手动直接跑 `npm run fetch-data` 一次性抓取（不经容器，直接写 `data/quotas.json`）。
 
 ### 自动刷新说明
 
-页面每 5 分钟自动静默刷新一次（重新读取数据），但这只是重新读取 `data/quotas.json` 文件，不会触发 Playwright 抓取。数据更新必须依赖宿主机运行 `npm run fetch-data`。
+页面每 5 分钟自动静默重新读取一次 `data/quotas.json`，但这只是重新读文件，不会触发 Playwright 抓取。
+
+数据真正的更新由以下两种方式触发：
+
+- **本地 Dev 模式**：页面点击「刷新」→ `/api/fetch-data` 直接执行抓取
+- **Docker 模式**：页面点击「刷新」→ 容器写触发文件 → 宿主机 `npm run fetch-watcher` 守护进程执行抓取
+
+也可以随时在宿主机手动跑 `npm run fetch-data` 一次性抓取。
 
 ## 常见问题
 
 **Q: 登录后刷新仍然显示空数据？**
 A: 确认登录时在弹出窗口中已完全通过阿里云认证（密码 + 短信验证码 / 扫码）。可尝试退出登录后重新登录。
 
-**Q: 提示"Chromium 未找到"？**
-A: 在项目目录执行 `npx playwright install chromium`，然后重启应用。
+**Q: 提示"Chromium 未找到"或"Executable doesn't exist"？**
+A: 通常 `npm install` 时 postinstall 钩子会自动下载。如果失败，在项目目录执行 `npx playwright install chromium`，然后重启应用。
 
 **Q: Session 多久会过期？**
 A: 取决于阿里云账号的 session 有效期，通常为数天到数周。过期后点击「登录阿里云账号」重新登录即可。
@@ -307,10 +329,13 @@ A: 取决于阿里云账号的 session 有效期，通常为数天到数周。�
 A: 登录状态下，点击右上角「**退出登录**」按钮，会清除本地 session 和数据缓存。
 
 **Q: Docker 模式下点击页面「登录」按钮没反应？**
-A: Docker 容器内无法运行浏览器，页面上的登录按钮在 Docker 模式下不会生效。请在宿主机终端运行 `npm run fetch-data` 完成登录和抓取。
+A: Docker 容器内无法直接弹出浏览器，但点击「**刷新**」按钮时，宿主机 watcher（`npm run fetch-watcher`）会代为弹出登录窗口。所以 Docker 模式下日常使用流程是：保持 watcher 在宿主机一直运行，需要登录或刷新时直接点页面上的「刷新」按钮。
+
+**Q: Docker 模式下页面点击「刷新」提示"等待宿主机 watcher 处理超时"？**
+A: 说明宿主机没有运行 watcher 守护进程。请打开一个终端执行：`npm run fetch-watcher`，并保持运行。建议跟 Docker 容器一起常驻。
 
 **Q: Docker 模式下页面显示"未登录"？**
-A: 确保已在宿主机运行 `npm run fetch-data` 生成 `data/quotas.json` 文件。Docker 容器通过检查该文件判断登录状态，不读取 `.session.json`。
+A: 说明 `data/quotas.json` 不存在。点击页面右上角「**刷新**」即可触发首次登录与抓取（前提是宿主机 watcher 已运行）。也可以手动跑 `npm run fetch-data` 一次性完成。
 
 **Q: 定时任务没有运行？**
 A: 检查 plist 文件中的路径是否正确，特别是 `npm` 的绝对路径（可用 `which npm` 确认）。查看 `/tmp/bailian-fetch.err.log` 获取错误信息。

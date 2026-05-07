@@ -4,7 +4,25 @@ services:
     ports:
       - "3010:3010"
     volumes:
-      - ./data:/app/data:ro
+      # rw 挂载：容器写 data/.fetch-trigger.json，宿主机 fetch-watcher 读取并执行抓取
+      # 抓取完成后，宿主机写 data/quotas.json，容器读取并返回给前端
+      - ./data:/app/data:rw
     environment:
       - DATA_DIR=/app/data
+      # 通知 /api/fetch-data 走 watcher 桥接：写触发文件 + 轮询结果
+      # 宿主机必须运行 `npm run fetch-watcher`，否则抓取会超时
+      - FETCH_MODE=trigger
+      # 使用宿主机时区，确保 updatedAt 时间戳与宿主机一致
+      - TZ=Asia/Shanghai
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3010/api/auth"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

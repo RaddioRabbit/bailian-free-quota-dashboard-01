@@ -1,0 +1,166 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - heading "阿里云百炼模型广场" [level=1] [ref=e5]
+        - paragraph [ref=e6]:
+          - text: 免费额度查看面板
+          - generic [ref=e7]: 已登录
+          - generic "直连模式：抓取由本进程直接执行" [ref=e8]: 直连模式
+      - generic [ref=e9]:
+        - generic [ref=e10]: 更新于 2026/05/07 15:34
+        - link "抓取配置" [ref=e11] [cursor=pointer]:
+          - /url: /source-config
+          - img
+          - text: 抓取配置
+        - button "退出登录" [ref=e12] [cursor=pointer]:
+          - img
+          - text: 退出登录
+        - button "刷新" [ref=e13] [cursor=pointer]:
+          - img
+          - text: 刷新
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - img [ref=e16]
+        - textbox "搜索模型名称..." [ref=e19]
+      - generic [ref=e20]:
+        - group [ref=e21]:
+          - button "全部" [pressed] [ref=e22] [cursor=pointer]
+          - button "即将过期" [ref=e23] [cursor=pointer]
+          - button "额度紧张" [ref=e24] [cursor=pointer]
+        - combobox [ref=e25] [cursor=pointer]:
+          - generic [ref=e26]: 过期时间：先到期
+          - img: ▼
+        - textbox [ref=e27]: expiry_asc
+    - main [ref=e28]:
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - generic [ref=e32]: 当前抓取页面（1）
+          - generic [ref=e34]: https://bailian.console.aliyun.com/cn-beijing/?spm=5176.29597918.J_F4r-7Zs_PtjrjEY48APSA.d_primary.7bc6133cRSw3Zk&tab=model#/model-market/all?providers=mini-max
+        - link "编辑配置" [ref=e35] [cursor=pointer]:
+          - /url: /source-config
+      - table [ref=e39]:
+        - rowgroup [ref=e40]:
+          - row "模型 剩余额度 过期时间 操作" [ref=e41]:
+            - columnheader "模型" [ref=e42]
+            - columnheader "剩余额度" [ref=e43]
+            - columnheader "过期时间" [ref=e44]
+            - columnheader "操作" [ref=e45]
+        - rowgroup [ref=e46]:
+          - row "qwen3.5 Qwen 文本生成 深度思考 视觉理解 715,303 71.5% 2026/05/18 00:00 剩余 10 天 查看" [ref=e47]:
+            - cell "qwen3.5 Qwen 文本生成 深度思考 视觉理解" [ref=e48]:
+              - generic [ref=e49]:
+                - generic [ref=e50]: qwen3.5
+                - generic [ref=e51]: Qwen
+                - generic [ref=e52]:
+                  - generic [ref=e53]: 文本生成
+                  - generic [ref=e54]: 深度思考
+                  - generic [ref=e55]: 视觉理解
+            - cell "715,303 71.5%" [ref=e56]:
+              - generic [ref=e57]:
+                - generic [ref=e58]:
+                  - generic [ref=e59]: 715,303
+                  - generic [ref=e60]: 71.5%
+                - progressbar "剩余额度 71.5%" [ref=e62]
+            - cell "2026/05/18 00:00 剩余 10 天" [ref=e63]:
+              - generic [ref=e64]:
+                - generic [ref=e65]: 2026/05/18 00:00
+                - generic [ref=e66]: 剩余 10 天
+            - cell "查看" [ref=e67]:
+              - link "查看" [ref=e68] [cursor=pointer]:
+                - /url: https://bailian.console.aliyun.com/cn-beijing#/model-market/detail/qwen3.5-plus
+                - text: 查看
+                - img [ref=e69]
+          - row "qwen3.6 Qwen 深度思考 视觉理解 文本生成 1,000,000 100.0% 2026/07/02 00:00 剩余 55 天 查看" [ref=e73]:
+            - cell "qwen3.6 Qwen 深度思考 视觉理解 文本生成" [ref=e74]:
+              - generic [ref=e75]:
+                - generic [ref=e76]: qwen3.6
+                - generic [ref=e77]: Qwen
+                - generic [ref=e78]:
+                  - generic [ref=e79]: 深度思考
+                  - generic [ref=e80]: 视觉理解
+                  - generic [ref=e81]: 文本生成
+            - cell "1,000,000 100.0%" [ref=e82]:
+              - generic [ref=e83]:
+                - generic [ref=e84]:
+                  - generic [ref=e85]: 1,000,000
+                  - generic [ref=e86]: 100.0%
+                - progressbar "剩余额度 100.0%" [ref=e88]
+            - cell "2026/07/02 00:00 剩余 55 天" [ref=e89]:
+              - generic [ref=e90]:
+                - generic [ref=e91]: 2026/07/02 00:00
+                - generic [ref=e92]: 剩余 55 天
+            - cell "查看" [ref=e93]:
+              - link "查看" [ref=e94] [cursor=pointer]:
+                - /url: https://bailian.console.aliyun.com/cn-beijing#/model-market/detail/qwen3.6-plus-2026-04-02
+                - text: 查看
+                - img [ref=e95]
+          - row "Qwen3.6-Plus Qwen 深度思考 视觉理解 文本生成 114,633 11.5% 2026/07/02 00:00 剩余 55 天 查看" [ref=e99]:
+            - cell "Qwen3.6-Plus Qwen 深度思考 视觉理解 文本生成" [ref=e100]:
+              - generic [ref=e101]:
+                - generic [ref=e102]: Qwen3.6-Plus
+                - generic [ref=e103]: Qwen
+                - generic [ref=e104]:
+                  - generic [ref=e105]: 深度思考
+                  - generic [ref=e106]: 视觉理解
+                  - generic [ref=e107]: 文本生成
+            - cell "114,633 11.5%" [ref=e108]:
+              - generic [ref=e109]:
+                - generic [ref=e110]:
+                  - generic [ref=e111]: 114,633
+                  - generic [ref=e112]: 11.5%
+                - progressbar "剩余额度 11.5%" [ref=e114]
+            - cell "2026/07/02 00:00 剩余 55 天" [ref=e115]:
+              - generic [ref=e116]:
+                - generic [ref=e117]: 2026/07/02 00:00
+                - generic [ref=e118]: 剩余 55 天
+            - cell "查看" [ref=e119]:
+              - link "查看" [ref=e120] [cursor=pointer]:
+                - /url: https://bailian.console.aliyun.com/cn-beijing#/model-market/detail/qwen3.6-plus
+                - text: 查看
+                - img [ref=e121]
+          - row "Qwen3.6-Max-Preview Qwen 深度思考 文本生成 1,000,000 100.0% 2026/07/20 00:00 剩余 73 天 查看" [ref=e125]:
+            - cell "Qwen3.6-Max-Preview Qwen 深度思考 文本生成" [ref=e126]:
+              - generic [ref=e127]:
+                - generic [ref=e128]: Qwen3.6-Max-Preview
+                - generic [ref=e129]: Qwen
+                - generic [ref=e130]:
+                  - generic [ref=e131]: 深度思考
+                  - generic [ref=e132]: 文本生成
+            - cell "1,000,000 100.0%" [ref=e133]:
+              - generic [ref=e134]:
+                - generic [ref=e135]:
+                  - generic [ref=e136]: 1,000,000
+                  - generic [ref=e137]: 100.0%
+                - progressbar "剩余额度 100.0%" [ref=e139]
+            - cell "2026/07/20 00:00 剩余 73 天" [ref=e140]:
+              - generic [ref=e141]:
+                - generic [ref=e142]: 2026/07/20 00:00
+                - generic [ref=e143]: 剩余 73 天
+            - cell "查看" [ref=e144]:
+              - link "查看" [ref=e145] [cursor=pointer]:
+                - /url: https://bailian.console.aliyun.com/cn-beijing#/model-market/detail/qwen3.6-max-preview
+                - text: 查看
+                - img [ref=e146]
+          - row "HappyHorse-1.0-T2V happyhorse 10 100.0% 2026/07/22 00:00 剩余 75 天 查看" [ref=e150]:
+            - cell "HappyHorse-1.0-T2V happyhorse" [ref=e151]:
+              - generic [ref=e152]:
+                - generic [ref=e153]: HappyHorse-1.0-T2V
+                - generic [ref=e154]: happyhorse
+            - cell "10 100.0%" [ref=e155]:
+              - generic [ref=e156]:
+                - generic [ref=e157]:
+                  - generic [ref=e158]: "10"
+                  - generic [ref=e159]: 100.0%
+                - progressbar "剩余额度 100.0%" [ref=e161]
+            - cell "2026/07/22 00:00 剩余 75 天" [ref=e162]:
+              - generic [ref=e163]:
+                - generic [ref=e164]: 2026/07/22 00:00
+                - generic [ref=e165]: 剩余 75 天
+            - cell "查看" [ref=e166]:
+              - link "查看" [ref=e167] [cursor=pointer]:
+                - /url: https://bailian.console.aliyun.com/cn-beijing#/model-market/detail/happyhorse-1.0-t2v
+                - text: 查看
+                - img [ref=e168]
+  - region "Notifications alt+T"
+  - alert [ref=e172]

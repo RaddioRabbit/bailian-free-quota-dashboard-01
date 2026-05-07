@@ -7,9 +7,13 @@
 import { DashboardData, ModelQuota } from "./types";
 import { fetchQuotaFromConsole, BailianScraperError } from "./bailian-scraper";
 import { consoleScraper } from "./console-scraper";
-import { filterObservedModels } from "./model-filters";
+import {
+  filterModelsBySourceUrls,
+  filterObservedModels,
+  filterOutExpiredModels,
+} from "./model-filters";
 import { getSourceUrlsPreview, loadSourceConfig } from "./source-config";
-import { loadQuotaDataFromFile, quotaFileExists } from "./file-loader";
+import { loadQuotaDataFromFile, quotaFileExists, isLoggedOutMarked } from "./file-loader";
 
 // 缓存配置
 interface CacheConfig {
@@ -64,6 +68,19 @@ function setCachedData(data: ModelQuota[], apiKey: string): void {
  */
 export function clearCache(): void {
   cache = null;
+}
+
+/**
+ * 手动设置控制台 session 缓存（供 /api/fetch-data 抓取完成后直接写入，
+ * 避免 /api/models 再走后台抓取并返回 fetching 空状态）
+ */
+export function setConsoleCache(quotas: ModelQuota[], sourceUrls: string[]): void {
+  const cacheKey = `__console_session__:${sourceUrls.join("|") || "__no_sources__"}`;
+  cache = {
+    data: quotas,
+    timestamp: Date.now(),
+    apiKey: cacheKey,
+  };
 }
 
 function getStaleCacheData(apiKey: string): ModelQuota[] | null {
@@ -123,7 +140,7 @@ async function runWithRequestDeduplication(
  * @param options 可选配置
  * @returns Dashboard数据
  */
-export async function getDashboardData(
+async function _getDashboardData(
   apiKey?: string,
   options?: {
     useCache?: boolean;
@@ -147,10 +164,12 @@ export async function getDashboardData(
   const hasConsoleSession = consoleScraper.sessionExists();
 
   // Docker 模式：优先从共享数据目录读取配额文件（Playwright 在宿主机运行）
-  if (process.env.DATA_DIR && quotaFileExists()) {
+  // marker 存在 → 用户主动 logout，不再展示数据，直到下次成功抓取清掉 marker
+  if (process.env.DATA_DIR && quotaFileExists() && !isLoggedOutMarked()) {
     const fileData = loadQuotaDataFromFile();
     return {
       ...fileData,
+      models: filterModelsBySourceUrls(fileData.models, sourceUrls),
       ...sourceMetadata,
     };
   }
@@ -182,6 +201,19 @@ export async function getDashboardData(
             ...sourceMetadata,
           };
         }
+      }
+
+      // /api/fetch-data 或独立脚本抓取后会把数据写入 quotas.json，
+      // 优先读取文件避免重复触发后台抓取并返回 fetching 空状态。
+      if (quotaFileExists() && !isLoggedOutMarked()) {
+        const fileData = loadQuotaDataFromFile();
+        const scopedModels = filterModelsBySourceUrls(fileData.models, sourceUrls);
+        setCachedData(scopedModels, cacheKey);
+        return {
+          ...fileData,
+          models: scopedModels,
+          ...sourceMetadata,
+        };
       }
 
       startBackgroundConsoleRefresh(cacheKey, sourceUrls);
@@ -258,6 +290,25 @@ export async function getDashboardData(
       throw error;
     }
   });
+}
+
+/**
+ * 对外入口：在 _getDashboardData 基础上统一剔除已过期模型。
+ * 单点过滤，覆盖 Docker 文件读路径和 Dev 控制台抓取路径，避免散布在各 return 分支。
+ */
+export async function getDashboardData(
+  apiKey?: string,
+  options?: {
+    useCache?: boolean;
+    cacheConfig?: Partial<CacheConfig>;
+    useMockOnFailure?: boolean;
+  }
+): Promise<DashboardData> {
+  const result = await _getDashboardData(apiKey, options);
+  return {
+    ...result,
+    models: filterOutExpiredModels(result.models),
+  };
 }
 
 /**

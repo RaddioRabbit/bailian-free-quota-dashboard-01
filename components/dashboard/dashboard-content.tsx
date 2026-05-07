@@ -89,6 +89,13 @@ interface AuthState {
   checked: boolean;
   loggedIn: boolean;
   reason: string | null;
+  mode?: "trigger" | "direct";
+}
+
+function normalizeRuntimeMode(mode: unknown): AuthState["mode"] {
+  if (mode === "trigger" || mode === "docker") return "trigger";
+  if (mode === "direct") return "direct";
+  return undefined;
 }
 
 export function DashboardContent() {
@@ -100,6 +107,7 @@ export function DashboardContent() {
     checked: false,
     loggedIn: false,
     reason: null,
+    mode: undefined,
   });
 
   const [search, setSearch] = useState("");
@@ -109,6 +117,7 @@ export function DashboardContent() {
   const loginPollAttemptsRef = useRef(0);
   const dataResolvedRef = useRef(false);
   const errorRef = useRef<string | null>(null);
+  const refreshInProgressRef = useRef(false);
 
   // Debounce search input by 200ms
   const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -118,6 +127,10 @@ export function DashboardContent() {
   }, [search]);
 
   const fetchData = useCallback(async (silent = false, notifyOnSuccess = true) => {
+    // 如果全量刷新正在进行，跳过 silent 的 /api/models 调用，避免覆盖 fetching 状态
+    if (silent && refreshInProgressRef.current) {
+      return;
+    }
     if (!silent) setIsLoading(true);
     if (silent) setIsRefreshing(true);
     setError(null);
@@ -149,7 +162,7 @@ export function DashboardContent() {
     }
   }, []);
 
-  const fetchAuthStatus = useCallback(async (): Promise<{ loggedIn: boolean; reason?: string | null } | null> => {
+  const fetchAuthStatus = useCallback(async (): Promise<{ loggedIn: boolean; reason?: string | null; mode?: string } | null> => {
     try {
       const res = await fetch("/api/auth");
       const payload = await res.json();
@@ -157,6 +170,7 @@ export function DashboardContent() {
         checked: true,
         loggedIn: Boolean(payload.loggedIn),
         reason: payload.reason ?? null,
+        mode: normalizeRuntimeMode(payload.mode),
       });
       return payload;
     } catch {
@@ -164,6 +178,7 @@ export function DashboardContent() {
         checked: true,
         loggedIn: false,
         reason: "error",
+        mode: undefined,
       });
       return null;
     }
@@ -178,17 +193,55 @@ export function DashboardContent() {
   }, []);
 
   const refreshDashboard = useCallback(async () => {
-    await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "refresh" }),
-    }).catch(() => null);
+    refreshInProgressRef.current = true;
+    setIsRefreshing(true);
+    const toastId = toast.loading("正在抓取最新额度数据，预计 2-3 分钟，请不要关闭页面…");
+    try {
+      const res = await fetch("/api/fetch-data", { method: "POST" });
+      const payload = await res.json().catch(() => ({} as Record<string, unknown>));
 
-    await Promise.all([
-      fetchAuthStatus(),
-      fetchData(true),
-    ]);
-  }, [fetchAuthStatus, fetchData]);
+      if (!res.ok) {
+        const errorMsg = (payload.error as string) || `HTTP ${res.status}`;
+        toast.error(`抓取失败：${errorMsg}`, { id: toastId });
+      } else {
+        const count = (payload.count as number) ?? 0;
+        const elapsed = ((payload.elapsedMs as number) ?? 0) / 1000;
+        toast.success(
+          `已更新 ${count} 个模型，耗时 ${elapsed.toFixed(1)} 秒`,
+          { id: toastId }
+        );
+
+        // 直接用 /api/fetch-data 返回的数据更新 state，避免 Docker 文件系统延迟导致读到旧数据
+        const models = payload.models as DashboardData["models"] | undefined;
+        console.log("[Dashboard] refreshDashboard 收到数据:", {
+          count,
+          modelsLength: Array.isArray(models) ? models.length : 0,
+          updatedAt: payload.updatedAt,
+          sourceUrlCount: payload.sourceUrlCount,
+        });
+        setData((prev) => ({
+          ...prev,
+          models: Array.isArray(models) ? models : prev?.models ?? [],
+          updatedAt: (payload.updatedAt as string) || new Date().toISOString(),
+          sourceUrlCount:
+            (payload.sourceUrlCount as number) ?? prev?.sourceUrlCount,
+          sourceUrlsPreview:
+            (payload.sourceUrlsPreview as string[]) ?? prev?.sourceUrlsPreview,
+          _note: undefined,
+          fetchStatusText: undefined,
+        }));
+        dataResolvedRef.current = true;
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "网络错误";
+      toast.error(`刷新失败：${msg}`, { id: toastId });
+    } finally {
+      refreshInProgressRef.current = false;
+    }
+
+    await fetchAuthStatus();
+    setIsRefreshing(false);
+  }, [fetchAuthStatus]);
 
   const startLoginPolling = useCallback(() => {
     stopLoginPolling();
@@ -229,6 +282,22 @@ export function DashboardContent() {
       stopLoginPolling();
     };
   }, [fetchAuthStatus, fetchData, stopLoginPolling]);
+
+  // 检测 ?refresh=1 query：用户在 /source-config 保存配置后跳转回来，触发与点击「刷新」等价的抓取流程
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("refresh") !== "1") return;
+    // 清掉 query 参数，避免用户手动刷新页面时重复触发
+    window.history.replaceState(null, "", "/");
+    // 用 ref 取最新函数引用，避免 stale closure，也不需要 persistent flag
+    void refreshDashboardRef.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 把 refreshDashboard 最新引用存到 ref，供上面 effect 使用
+  const refreshDashboardRef = useRef(refreshDashboard);
+  refreshDashboardRef.current = refreshDashboard;
 
 
   // Auto refresh every 5 minutes (silent)
@@ -273,7 +342,13 @@ export function DashboardContent() {
         fetchStatusText={data?.fetchStatusText}
         isLoggedIn={authState.loggedIn}
         authChecked={authState.checked}
+        mode={authState.mode}
         onLoginStarted={startLoginPolling}
+        onLoggedOut={async () => {
+          stopLoginPolling();
+          await fetchAuthStatus();
+          await fetchData(true, false);
+        }}
       />
       <Toolbar
         search={search}
@@ -340,6 +415,9 @@ export function DashboardContent() {
                   正在根据你配置的模型广场页面抓取数据，请稍候…
                 </p>
               </div>
+            )}
+            {data.models.length === 0 && authState.loggedIn && !data._note && (
+              <EmptyState />
             )}
             {/* Has data */}
             {data.models.length > 0 && (
