@@ -112,6 +112,9 @@ async function doScrape(): Promise<FetchTriggerResult> {
       elapsedMs / 1000
     ).toFixed(1)}s`
   );
+  console.log(
+    `[fetch-watcher] 抓取完成！共 ${quotas.length} 个模型有免费额度数据。`
+  );
 
   return { count: quotas.length, elapsedMs, updatedAt, models: quotas };
 }

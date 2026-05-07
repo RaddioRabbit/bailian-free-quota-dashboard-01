@@ -28,6 +28,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
           <Loader2Icon className="size-4 animate-spin" />
         ),
       }}
+      offset={{ right: 24, bottom: 24 }}
+      mobileOffset={{ right: 16, bottom: 16, left: 16 }}
       style={
         {
           "--normal-bg": "var(--popover)",
@@ -38,7 +40,14 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast: "cn-toast !bg-white !text-slate-900 !border !border-slate-200 !shadow-lg !opacity-100 !backdrop-blur-none",
+          title: "!text-slate-900",
+          description: "!text-slate-600",
+          loading: "!bg-white !text-slate-900 !border-slate-200",
+          success: "!bg-white !text-slate-900 !border-slate-200",
+          error: "!bg-white !text-slate-900 !border-slate-200",
+          info: "!bg-white !text-slate-900 !border-slate-200",
+          warning: "!bg-white !text-slate-900 !border-slate-200",
         },
       }}
       {...props}

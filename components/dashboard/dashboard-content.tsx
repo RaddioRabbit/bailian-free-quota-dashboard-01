@@ -16,6 +16,11 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { daysUntilExpiry, percentUsed } from "@/lib/utils/format";
 
+const FETCH_STATUS_TOAST_ID = "quota-fetch-status";
+const FETCH_STATUS_MESSAGE = "正在抓取最新额度数据，预计 2-3 分钟，请不要关闭页面…";
+const LOGIN_POLL_INTERVAL_MS = 1000;
+const LOGIN_POLL_MAX_ATTEMPTS = 180;
+
 /**
  * Dashboard data flow:
  *
@@ -89,13 +94,6 @@ interface AuthState {
   checked: boolean;
   loggedIn: boolean;
   reason: string | null;
-  mode?: "trigger" | "direct";
-}
-
-function normalizeRuntimeMode(mode: unknown): AuthState["mode"] {
-  if (mode === "trigger" || mode === "docker") return "trigger";
-  if (mode === "direct") return "direct";
-  return undefined;
 }
 
 export function DashboardContent() {
@@ -107,7 +105,6 @@ export function DashboardContent() {
     checked: false,
     loggedIn: false,
     reason: null,
-    mode: undefined,
   });
 
   const [search, setSearch] = useState("");
@@ -115,6 +112,8 @@ export function DashboardContent() {
   const [sortBy, setSortBy] = useState<SortBy>("expiry_asc");
   const loginPollTimerRef = useRef<number | null>(null);
   const loginPollAttemptsRef = useRef(0);
+  const loginPollInFlightRef = useRef(false);
+  const loginPollCleanupRef = useRef<(() => void) | null>(null);
   const dataResolvedRef = useRef(false);
   const errorRef = useRef<string | null>(null);
   const refreshInProgressRef = useRef(false);
@@ -164,13 +163,12 @@ export function DashboardContent() {
 
   const fetchAuthStatus = useCallback(async (): Promise<{ loggedIn: boolean; reason?: string | null; mode?: string } | null> => {
     try {
-      const res = await fetch("/api/auth");
+      const res = await fetch("/api/auth", { cache: "no-store" });
       const payload = await res.json();
       setAuthState({
         checked: true,
         loggedIn: Boolean(payload.loggedIn),
         reason: payload.reason ?? null,
-        mode: normalizeRuntimeMode(payload.mode),
       });
       return payload;
     } catch {
@@ -178,7 +176,6 @@ export function DashboardContent() {
         checked: true,
         loggedIn: false,
         reason: "error",
-        mode: undefined,
       });
       return null;
     }
@@ -189,26 +186,34 @@ export function DashboardContent() {
       window.clearTimeout(loginPollTimerRef.current);
       loginPollTimerRef.current = null;
     }
+    loginPollCleanupRef.current?.();
+    loginPollCleanupRef.current = null;
     loginPollAttemptsRef.current = 0;
+    loginPollInFlightRef.current = false;
   }, []);
 
   const refreshDashboard = useCallback(async () => {
+    if (refreshInProgressRef.current) {
+      toast.loading(FETCH_STATUS_MESSAGE, { id: FETCH_STATUS_TOAST_ID });
+      return;
+    }
+
     refreshInProgressRef.current = true;
     setIsRefreshing(true);
-    const toastId = toast.loading("正在抓取最新额度数据，预计 2-3 分钟，请不要关闭页面…");
+    toast.loading(FETCH_STATUS_MESSAGE, { id: FETCH_STATUS_TOAST_ID });
     try {
       const res = await fetch("/api/fetch-data", { method: "POST" });
       const payload = await res.json().catch(() => ({} as Record<string, unknown>));
 
       if (!res.ok) {
         const errorMsg = (payload.error as string) || `HTTP ${res.status}`;
-        toast.error(`抓取失败：${errorMsg}`, { id: toastId });
+        toast.error(`抓取失败：${errorMsg}`, { id: FETCH_STATUS_TOAST_ID });
       } else {
         const count = (payload.count as number) ?? 0;
         const elapsed = ((payload.elapsedMs as number) ?? 0) / 1000;
         toast.success(
           `已更新 ${count} 个模型，耗时 ${elapsed.toFixed(1)} 秒`,
-          { id: toastId }
+          { id: FETCH_STATUS_TOAST_ID }
         );
 
         // 直接用 /api/fetch-data 返回的数据更新 state，避免 Docker 文件系统延迟导致读到旧数据
@@ -234,20 +239,25 @@ export function DashboardContent() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "网络错误";
-      toast.error(`刷新失败：${msg}`, { id: toastId });
+      toast.error(`刷新失败：${msg}`, { id: FETCH_STATUS_TOAST_ID });
     } finally {
+      await fetchAuthStatus();
       refreshInProgressRef.current = false;
+      setIsRefreshing(false);
     }
-
-    await fetchAuthStatus();
-    setIsRefreshing(false);
   }, [fetchAuthStatus]);
 
   const startLoginPolling = useCallback(() => {
     stopLoginPolling();
 
     const poll = async () => {
+      if (loginPollInFlightRef.current) {
+        return;
+      }
+      loginPollInFlightRef.current = true;
+
       const auth = await fetchAuthStatus();
+      loginPollInFlightRef.current = false;
       if (auth?.loggedIn) {
         stopLoginPolling();
         toast.success("已检测到阿里云登录");
@@ -262,13 +272,29 @@ export function DashboardContent() {
       }
 
       loginPollAttemptsRef.current += 1;
-      if (loginPollAttemptsRef.current >= 60) {
+      if (loginPollAttemptsRef.current >= LOGIN_POLL_MAX_ATTEMPTS) {
         stopLoginPolling();
         toast.error("登录状态仍未建立，请确认弹出浏览器中的阿里云认证已完成");
         return;
       }
 
-      loginPollTimerRef.current = window.setTimeout(poll, 3000);
+      loginPollTimerRef.current = window.setTimeout(poll, LOGIN_POLL_INTERVAL_MS);
+    };
+
+    const pollOnPageReturn = () => {
+      if (document.visibilityState === "hidden") return;
+      if (loginPollTimerRef.current !== null) {
+        window.clearTimeout(loginPollTimerRef.current);
+        loginPollTimerRef.current = null;
+      }
+      void poll();
+    };
+
+    window.addEventListener("focus", pollOnPageReturn);
+    document.addEventListener("visibilitychange", pollOnPageReturn);
+    loginPollCleanupRef.current = () => {
+      window.removeEventListener("focus", pollOnPageReturn);
+      document.removeEventListener("visibilitychange", pollOnPageReturn);
     };
 
     void poll();
@@ -339,10 +365,8 @@ export function DashboardContent() {
         isRefreshing={isRefreshing}
         onRefresh={() => void refreshDashboard()}
         isFetchingRealData={isFetchingRealData}
-        fetchStatusText={data?.fetchStatusText}
         isLoggedIn={authState.loggedIn}
         authChecked={authState.checked}
-        mode={authState.mode}
         onLoginStarted={startLoginPolling}
         onLoggedOut={async () => {
           stopLoginPolling();

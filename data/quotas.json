@@ -1,53 +1,35 @@
 {
   "models": [
     {
-      "id": "happyhorse-1.0-i2v",
-      "modelName": "HappyHorse-1.0-I2V",
-      "provider": "happyhorse",
-      "description": "HappyHorse-1.0-I2V支持图生视频，具备高度还原的动态画面生成能力，能够精准理解文本语义，输出流畅自然、细节丰富的高质量视频。",
-      "capabilityTags": [],
-      "totalQuota": 10,
+      "id": "deepseek-v4-flash",
+      "modelName": "DeepSeek-V4-Flash",
+      "provider": "DeepSeek",
+      "description": "高效轻量化MoE模型，总参284B，激活13B，原生支持百万超长上下文能力。推理速度快、延迟低、调用成本低廉，综合能力均衡，主打高并发、轻量化任务，适合日常对话、内容创作、基础 RAG、批量文案处理等普惠刚需场景。",
+      "capabilityTags": [
+        "文本生成",
+        "深度思考"
+      ],
+      "totalQuota": 1000000,
       "usedQuota": 0,
-      "remainingQuota": 10,
-      "expiresAt": "2026-07-21T16:00:00.000Z",
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-07-23T16:00:00.000Z",
       "unit": "tokens"
     },
     {
-      "id": "happyhorse-1.0-r2v",
-      "modelName": "HappyHorse-1.0-R2V",
-      "provider": "happyhorse",
-      "description": "HappyHorse-1.0-R2V支持参考生视频，更加稳定的主体与场景参考，支持最多9张图片参考，能够精准保持创作意图，实现更强表现能力。",
-      "capabilityTags": [],
-      "totalQuota": 10,
+      "id": "deepseek-v4-pro",
+      "modelName": "DeepSeek-V4-Pro",
+      "provider": "DeepSeek",
+      "description": "旗舰级 MoE 大模型，总参1.6T、激活 49B，原生支持百万级超长上下文。依托海量高质量训练数据，具备顶尖数学逻辑、复杂推理、专业代码与长文本深度解析能力，适配高阶科研、复杂办公、深度智能代理等高难度场景。",
+      "capabilityTags": [
+        "深度思考",
+        "文本生成"
+      ],
+      "totalQuota": 1000000,
       "usedQuota": 0,
-      "remainingQuota": 10,
-      "expiresAt": "2026-07-25T16:00:00.000Z",
-      "unit": "tokens"
-    },
-    {
-      "id": "happyhorse-1.0-t2v",
-      "modelName": "HappyHorse-1.0-T2V",
-      "provider": "happyhorse",
-      "description": "HappyHorse-1.0-T2V支持文生视频，具备高度还原的动态画面生成能力，能够精准理解文本语义，输出流畅自然、细节丰富的高质量视频。",
-      "capabilityTags": [],
-      "totalQuota": 10,
-      "usedQuota": 0,
-      "remainingQuota": 10,
-      "expiresAt": "2026-07-21T16:00:00.000Z",
-      "unit": "tokens"
-    },
-    {
-      "id": "happyhorse-1.0-video-edit",
-      "modelName": "HappyHorse-1.0-Video-Edit",
-      "provider": "happyhorse",
-      "description": "HappyHorse-1.0-Video-Edit支持视频编辑，自然语言指令编辑视频，可参考最多5张图片局部或全局编辑视频元素，能够精准复刻视频动态过程，实现更强表现能力。",
-      "capabilityTags": [],
-      "totalQuota": 10,
-      "usedQuota": 0,
-      "remainingQuota": 10,
-      "expiresAt": "2026-07-25T16:00:00.000Z",
+      "remainingQuota": 1000000,
+      "expiresAt": "2026-07-23T16:00:00.000Z",
       "unit": "tokens"
     }
   ],
-  "updatedAt": "2026-05-07T09:56:08.243Z"
+  "updatedAt": "2026-05-07T13:39:16.606Z"
 }

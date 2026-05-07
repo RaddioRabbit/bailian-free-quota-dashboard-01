@@ -1,188 +1,336 @@
-# Bailian Free Quota Dashboard
+# Bailian Free Quota Dashboard · 阿里云百炼免费额度面板
 
-> 阿里云百炼模型广场免费额度查看面板
+> 面向阿里云百炼用户的本地额度监控 Dashboard。
+> 登录阿里云账号后，自动抓取模型广场免费额度、剩余额度和过期时间。
+> 本地开发模式由 Next.js 进程直接运行 Playwright；Docker 模式通过宿主机 `fetch-watcher` 桥接登录和抓取。
 
-一个用于查看阿里云百炼模型广场免费额度、过期时间和剩余额度的轻量化 Dashboard。登录阿里云账号后可拉取真实数据，通过搜索、筛选、排序快速定位即将过期或额度紧张的模型。
+<p>
+  <img alt="Next.js" src="https://img.shields.io/badge/Next.js-14.2-black?logo=nextdotjs&logoColor=white">
+  <img alt="React" src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white">
+  <img alt="Playwright" src="https://img.shields.io/badge/Playwright-1.59-2EAD33?logo=playwright&logoColor=white">
+  <img alt="Tailwind" src="https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss&logoColor=white">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-supported-2496ED?logo=docker&logoColor=white">
+</p>
 
-## 功能
+---
 
-- 查看 Qwen、DeepSeek、MiniMax、Moonshot、Zhipu 等主流模型的免费额度和过期时间
-- 按"即将过期""额度紧张"等条件快速筛选
-- 按名称、过期时间、剩余额度排序，支持搜索模型名
-- 登录阿里云账号后拉取真实数据（Playwright 自动化）
-- 自定义抓取范围：配置要监控的模型广场页面 URL
-- 数据本地缓存（默认 5 分钟），支持手动刷新
-- 支持 Docker 部署，前后端分离运行
+## 目录
 
-## 环境要求
+- [项目简介](#项目简介)
+- [核心架构：宿主机抓取桥接](#核心架构宿主机抓取桥接)
+- [功能特性](#功能特性)
+- [技术栈](#技术栈)
+- [项目结构](#项目结构)
+- [快速开始](#快速开始)
+- [环境变量](#环境变量)
+- [开发指南](#开发指南)
+- [API 路由概览](#api-路由概览)
+- [核心使用流程](#核心使用流程)
+- [macOS 定时抓取](#macos-定时抓取)
+- [故障排查 / FAQ](#故障排查--faq)
 
-- Node.js 18+
-- npm
-- Docker Desktop（Docker 部署方式需要）
+---
 
-## 安装
+## 项目简介
+
+Bailian Free Quota Dashboard 把「登录阿里云账号 → 配置模型广场范围 → 抓取免费额度 → 本地查看和筛选」整理成一个轻量面板。
+
+当前仓库已包含一份本地抓取样例数据：`data/quotas.json` 中有 42 个模型额度记录，覆盖 Qwen、DeepSeek、Moonshot AI、Zhipu AI、happyhorse 等 Provider，最后更新时间为 `2026-05-07T12:12:36.504Z`。
+
+核心价值：
+
+- **少操作**：登录一次后复用本地 `.session.json`，后续直接刷新额度数据
+- **可控范围**：通过 `/source-config` 保存模型广场 URL，只抓取你关心的 Provider / 能力标签
+- **Docker 可长期运行**：前端在容器中展示，Playwright 留在宿主机运行，避免容器内浏览器和登录弹窗问题
+
+---
+
+## 核心架构：宿主机抓取桥接
+
+Docker 容器无法可靠弹出宿主机浏览器，因此项目把展示和抓取拆开：
+
+```text
+容器: Next.js Dashboard
+  → POST /api/auth (action=login) 或 POST /api/fetch-data
+  → 写 data/.fetch-trigger.json (pending, intent=login/fetch)
+  → 轮询触发文件直到 done/error
+  → 将抓取结果直接返回前端
+
+宿主机: npm run fetch-watcher
+  → 监听 data/.fetch-trigger.json
+  → pending → running → done/error
+  → 用 Playwright 完成登录或抓取
+  → 写 data/quotas.json
+  → 写 data/.session-status.json
+```
+
+### 关键状态文件
+
+| 文件 | 作用 | 是否提交 |
+|------|------|----------|
+| `.session.json` | Playwright 保存的阿里云登录态 | 否 |
+| `data/quotas.json` | Dashboard 展示的额度数据 | 是 |
+| `data/.source-config.json` | 本地抓取范围配置 | 否 |
+| `data/.fetch-trigger.json` | Docker 容器与宿主机 watcher 的任务触发文件 | 运行时文件 |
+| `data/.session-status.json` | watcher 写入的真实登录态，供容器 `/api/auth` 读取 | 是 |
+
+### 触发状态机
+
+```text
+(无触发文件)
+      │
+      ▼
+pending ── watcher 接手 ──▶ running ── 抓取成功 ──▶ done
+                                      └─ 抓取失败 ──▶ error
+```
+
+`pending` / `running` 超过 10 分钟会被视为僵尸任务，watcher 会标记为 `error`，避免刷新请求一直卡住。
+
+---
+
+## 功能特性
+
+### 额度查看
+
+- 查看 Qwen、DeepSeek、Moonshot AI、Zhipu AI、happyhorse 等模型的免费额度和过期时间
+- 展示总额度、已用额度、剩余额度、过期时间和模型能力标签
+- 自动过滤已过期模型
+
+### 搜索、筛选和排序
+
+| 能力 | 说明 |
+|------|------|
+| 搜索 | 按模型名、Provider、描述、能力标签过滤 |
+| 快捷筛选 | 全部 / 即将过期 / 额度紧张 |
+| 排序 | 按名称、过期时间、剩余额度排序 |
+| 响应式展示 | 桌面表格 + 移动端卡片列表 |
+
+### 抓取配置
+
+- 在 `/source-config` 粘贴阿里云百炼模型广场 URL
+- 支持多条 URL，每行一条
+- 多个页面结果取并集，再按 URL 中的 Provider 参数过滤
+- 保存配置后跳转首页并触发刷新
+
+### 登录和刷新
+
+- 本地开发模式：Next.js 进程直接调用 Playwright 弹出 Chromium
+- Docker 模式：容器写触发文件，宿主机 watcher 弹出 Chromium
+- 刷新中使用固定 toast 状态，重复点击不会启动多个抓取任务
+- `/api/auth` 禁用缓存，避免 Docker 模式登录态回潮
+
+---
+
+## 技术栈
+
+> 表中只列出当前代码实际使用的主要依赖和运行组件。
+
+| 分类 | 选型 |
+|------|------|
+| **应用框架** | Next.js 14 App Router |
+| **前端** | React 18 · TypeScript 5 |
+| **样式** | Tailwind CSS 3.4 · shadcn/ui 风格组件 · `tailwindcss-animate` |
+| **图标 / 通知** | `lucide-react` · `sonner` |
+| **浏览器自动化** | Playwright Chromium |
+| **数据解析** | `cheerio` · 百炼控制台 API 响应解析 |
+| **数据存储** | 本地 JSON 文件：`data/quotas.json`、`data/.source-config.json`、`data/.session-status.json` |
+| **部署** | Dockerfile · docker-compose · 宿主机 watcher 桥接 |
+
+---
+
+## 项目结构
+
+```text
+.
+├── app/
+│   ├── api/
+│   │   ├── auth/route.ts              # 登录态检查、登录/退出/清缓存
+│   │   ├── fetch-data/route.ts        # 手动刷新；direct/trigger 两种模式
+│   │   ├── models/route.ts            # Dashboard 数据读取与 API Key 兜底
+│   │   └── source-config/route.ts     # 抓取范围配置
+│   ├── source-config/page.tsx         # 抓取配置页面
+│   ├── page.tsx                       # Dashboard 首页
+│   └── layout.tsx
+│
+├── components/
+│   ├── dashboard/                     # Dashboard 页面组件
+│   │   ├── dashboard-content.tsx
+│   │   ├── header.tsx
+│   │   ├── model-table.tsx
+│   │   ├── model-card-list.tsx
+│   │   ├── toolbar.tsx
+│   │   └── source-config-page.tsx
+│   └── ui/                            # 本地 UI 基础组件
+│
+├── lib/
+│   ├── data/
+│   │   ├── api.ts                     # Dashboard 数据入口、缓存与过滤
+│   │   ├── console-scraper.ts         # Playwright 控制台抓取
+│   │   ├── fetch-trigger.ts           # Docker 触发文件状态机
+│   │   ├── file-loader.ts             # 本地额度文件读取
+│   │   ├── model-filters.ts           # Provider / 过期模型过滤
+│   │   ├── session-status.ts          # Docker 登录态共享文件
+│   │   └── source-config.ts           # 抓取 URL 配置
+│   └── utils/
+│
+├── scripts/
+│   ├── fetch-data.ts                  # 宿主机一次性抓取
+│   └── fetch-watcher.ts               # Docker 模式宿主机 watcher
+│
+├── data/
+│   ├── quotas.json                    # 当前额度数据
+│   └── .session-status.json           # watcher 写入的登录态
+│
+├── Dockerfile
+├── docker-compose.yml
+├── next.config.mjs
+├── tailwind.config.ts
+└── package.json
+```
+
+---
+
+## 快速开始
+
+### 环境要求
+
+- **Node.js** ≥ 20
+- **npm**
+- **Docker Desktop**（仅 Docker 部署需要）
+
+### 本地开发运行
 
 ```bash
 # 1. 克隆仓库
 git clone <repo-url>
 cd bailian-dashboard
 
-# 2. 安装依赖（postinstall 钩子会自动下载 Chromium 浏览器）
+# 2. 安装依赖；postinstall 会下载 Playwright Chromium
 npm install
-```
 
-> **说明**：`npm install` 完成后，`postinstall` 钩子会自动执行 `playwright install chromium`，
-> 下载 Chromium 浏览器到 `~/Library/Caches/ms-playwright/`（约 250MB）。
-> 如自动下载失败，可手动执行：`npx playwright install chromium`
-
-## 使用
-
-### 方式一：本地开发运行（推荐初次使用）
-
-#### 1. 启动应用
-
-```bash
+# 3. 启动开发服务器
 npm run dev
 ```
 
 打开浏览器访问 [http://localhost:3010](http://localhost:3010)。
 
-#### 2. 登录阿里云账号
+首次使用：
 
-初次使用需要登录，点击页面右上角的「**登录阿里云账号**」按钮：
+1. 点击「登录阿里云账号」
+2. 在弹出的 Chromium 中完成阿里云登录
+3. 进入「抓取配置」，粘贴模型广场 URL
+4. 点击「保存并开始抓取」
+5. 回到首页查看额度数据
 
-1. 系统自动弹出 Chromium 浏览器窗口
-2. 在弹出窗口中完成阿里云登录（支持密码、扫码等方式）
-3. 登录成功后，关闭或保留弹出窗口，回到 Dashboard
-4. 点击「**刷新**」按钮，Dashboard 开始拉取真实额度数据
-
-> Session 保存在本地 `.session.json`（已加入 `.gitignore`，不会提交到 Git）。
-> 此后每次重启应用都会自动复用已保存的 session，无需重复登录。
-
-#### 3. 配置抓取范围（可选）
-
-登录后，点击「**抓取配置**」可自定义要监控的模型范围：
-
-1. 在 [阿里云百炼模型广场](https://bailian.console.aliyun.com/cn-beijing#/model-market/all) 筛选你关注的 Provider 和能力标签
-
-2. 复制浏览器地址栏中的完整 URL
-
-3. 粘贴到抓取配置页面，点击「**保存并开始抓取**」
-
-支持填写多条 URL（每行一条），系统会对多条页面的结果取并集。
-
-**URL 示例：**
-
-```
-https://bailian.console.aliyun.com/cn-beijing#/model-market/all?providers=qwen%2Cmini-max%2Cmoonshot-ai%2Czhipu-ai%2Cdeepseek&capabilities=TG%2CReasoning%2CVU
-```
-
-#### 4. 日常使用
-
-- 点击「**刷新**」手动更新数据（数据默认缓存 5 分钟）
-- 使用顶部搜索框按模型名过滤
-- 使用筛选按钮查看「即将过期」或「额度紧张」的模型
-- 点击列标题可按名称、过期时间、剩余额度排序
-
----
-
-### 方式二：Docker 部署（推荐长期运行）
-
-架构说明：Next.js 前端运行在 Docker 容器中，Playwright 抓取继续在宿主机（本机）运行，通过共享 `./data` 目录交换数据。
-
-> **重要**：Docker 容器只负责展示数据与转发请求，登录和抓取必须在宿主机完成。点击页面「**刷新**」按钮时，容器会写入 `data/.fetch-trigger.json` 触发文件，**宿主机的 `npm run fetch-watcher` 守护进程**读取文件后调用 Playwright 完成抓取，结果写回 `data/quotas.json`。
-
-#### 完整使用流程（新电脑首次）
-
-**Step 1：启动 Docker 容器**
+### Docker 长期运行
 
 ```bash
+# 1. 启动容器
 docker-compose up -d --build
-```
 
-浏览器访问 http://localhost:3010，此时页面显示「暂无数据」。
-
-**Step 2：宿主机安装抓取环境**
-
-```bash
-# 安装项目依赖（postinstall 钩子会自动下载 Chromium 浏览器）
+# 2. 宿主机安装抓取依赖
 npm install
-```
 
-> 如果 Chromium 自动下载失败，可手动执行：`npx playwright install chromium`
-
-**Step 3：启动宿主机 watcher 守护进程**（关键）
-
-打开一个新终端，常驻运行：
-
-```bash
+# 3. 宿主机常驻 watcher
 npm run fetch-watcher
 ```
 
-> watcher 会监听 `data/.fetch-trigger.json`，容器侧每次点击「刷新」即触发本进程执行抓取。
-> 不启动 watcher 的话，页面点击「刷新」会提示"等待宿主机 watcher 处理超时"。
+打开 [http://localhost:3010](http://localhost:3010)。Docker 模式下，登录和刷新都依赖宿主机 watcher；不运行 watcher 时，刷新会等待到超时。
 
-**Step 4：配置抓取页面（可选）**
-
-项目已自带默认的模型广场链接。如需调整，访问 http://localhost:3010/source-config，粘贴阿里云百炼模型广场页面的 URL。
-
-**Step 5：在页面上点击「刷新」完成首次登录与抓取**
-
-回到浏览器 http://localhost:3010，点击右上角「**刷新**」按钮：
-
-1. 页面提示"正在抓取最新额度数据，预计 30-60 秒…"
-2. 宿主机 watcher 检测到无 session → 自动弹出 Chromium 浏览器
-3. 在弹出窗口中完成阿里云登录（密码或扫码）
-4. 登录完成后**手动关闭浏览器窗口**，watcher 自动继续抓取
-5. 页面自动收到 toast：`已更新 X 个模型，耗时 Y 秒`，列表立即刷新
-
-#### 日常刷新数据
-
-直接点击页面上的「**刷新**」按钮即可。watcher 保持运行的情况下，每次刷新都会自动抓取最新数据并更新页面。
-
-也可以手动跑一次（不依赖页面按钮）：
+### 独立抓取
 
 ```bash
 npm run fetch-data
 ```
 
----
-
-`docker-compose.yml` 关键配置：
-
-- 端口映射 `3010:3010`
-- 共享卷 `./data:/app/data:rw`（容器需写入 `.fetch-trigger.json` 触发文件）
-- 环境变量 `DATA_DIR=/app/data`、`FETCH_MODE=trigger`（启用 watcher 桥接）
+该命令不启动前端服务器，直接调用 Playwright 抓取并写入 `data/quotas.json`。它适合手动更新数据或配合系统定时任务使用。
 
 ---
 
-### 独立数据抓取脚本
+## 环境变量
+
+复制 `.env.example` 为 `.env.local` 后按需配置：
 
 ```bash
-npm run fetch-data
+cp .env.example .env.local
 ```
 
-这是独立脚本，不启动前端服务器，直接调用 Playwright 抓取并写入 `./data/quotas.json`。
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `DASHSCOPE_API_KEY` | 无 | 备用 API Key 查询路径；额度查询能力受 DashScope API 限制，推荐使用登录抓取 |
+| `DATA_DIR` | `./data` | 数据文件目录；Docker 中为 `/app/data` |
+| `FETCH_MODE` | direct | 设为 `trigger` 时，`/api/fetch-data` 通过 watcher 触发抓取 |
+| `DEBUG_BAILIAN` | 无 | 设为 `1` 时，输出更详细的控制台抓取日志 |
+| `PLAYWRIGHT_CHROMIUM_PATH` | Playwright 默认路径 | 指定 Chromium 可执行文件路径 |
 
-**使用场景：**
-
-- **Docker 模式下更新数据的唯一方式**（容器内无法运行浏览器）
-- 前端在 Docker 运行时，避免端口冲突
-- 定时自动抓取数据
-
-**脚本流程：**
-
-1. 检查 session → 没有则弹出浏览器登录
-2. 抓取模型额度
-3. 写入 `data/quotas.json`
-
-支持自动重试：session 过期时会自动重新登录并再次抓取。
+> 日常使用推荐「阿里云账号登录 + Playwright 抓取」。`DASHSCOPE_API_KEY` 只是备用路径，无法保证拿到完整免费额度信息。
 
 ---
 
-### macOS 自动定时抓取（可选）
+## 开发指南
 
-使用 launchd 每隔一段时间自动运行 `npm run fetch-data`：
+### npm scripts 一览
+
+| 命令 | 说明 |
+|------|------|
+| `npm run dev` | 启动 Next.js 开发服务器（端口 3010） |
+| `npm run build` | 构建生产版本 |
+| `npm run start` | 启动生产服务器（端口 3010） |
+| `npm run lint` | 运行 Next.js ESLint 检查 |
+| `npm run fetch-data` | 独立抓取额度数据 |
+| `npm run fetch-watcher` | Docker 模式宿主机 watcher |
+
+### 构建与检查
+
+```bash
+npm run build
+npm run lint
+npx tsc --noEmit
+```
+
+### Docker 配置要点
+
+`docker-compose.yml` 中的关键配置：
+
+- `3010:3010`：Dashboard 访问端口
+- `./data:/app/data:rw`：容器和宿主机共享数据目录
+- `DATA_DIR=/app/data`：容器内读取共享数据
+- `FETCH_MODE=trigger`：容器通过触发文件请求宿主机抓取
+- healthcheck：访问 `http://127.0.0.1:3010/api/auth`
+
+---
+
+## API 路由概览
+
+| 路由 | 方法 | 说明 |
+|------|------|------|
+| `/api/models` | GET | 读取 Dashboard 数据；优先使用 session / 文件数据，可 fallback 到 API Key 路径 |
+| `/api/models` | POST | `verify` 验证 API Key；`refresh` 清缓存后重新读取 |
+| `/api/auth` | GET | 查询登录态；Docker 模式优先读取 `data/.session-status.json` |
+| `/api/auth` | POST | `login` / `logout` / `refresh` |
+| `/api/fetch-data` | GET | 查看当前抓取模式和运行状态 |
+| `/api/fetch-data` | POST | 触发一次额度抓取；direct 模式直接抓，trigger 模式写触发文件 |
+| `/api/source-config` | GET | 读取抓取页面 URL 配置 |
+| `/api/source-config` | POST | 保存抓取页面 URL，并清理 Dashboard 缓存 |
+
+---
+
+## 核心使用流程
+
+1. **登录阿里云账号**：本地模式直接弹 Chromium；Docker 模式由 watcher 弹 Chromium
+2. **配置抓取范围**：在百炼模型广场筛选 Provider / 能力标签，复制 URL 到 `/source-config`
+3. **保存并刷新**：保存配置后回到首页，触发 `/api/fetch-data`
+4. **Playwright 抓取**：访问模型广场页面和模型详情，解析免费额度、剩余额度和过期时间
+5. **写入本地数据**：抓取结果写入 `data/quotas.json`
+6. **前端展示**：Dashboard 按搜索、筛选、排序展示结果
+7. **后续维护**：手动点击「刷新」、运行 `npm run fetch-data`，或用 launchd 定时抓取
+
+---
+
+## macOS 定时抓取
+
+使用 launchd 每隔 30 分钟运行一次 `npm run fetch-data`：
 
 ```bash
 cat > ~/Library/LaunchAgents/com.bailian.fetch.plist << 'EOF'
@@ -212,9 +360,7 @@ launchctl load ~/Library/LaunchAgents/com.bailian.fetch.plist
 launchctl start com.bailian.fetch
 ```
 
-建议间隔 30 分钟（1800 秒）或 1 小时（3600 秒）。
-
-如需停止定时任务：
+停止定时任务：
 
 ```bash
 launchctl stop com.bailian.fetch
@@ -223,119 +369,70 @@ launchctl unload ~/Library/LaunchAgents/com.bailian.fetch.plist
 
 ---
 
-### 迁移到新电脑
+## 故障排查 / FAQ
 
-#### Docker 模式（推荐）
+<details>
+<summary><b>Q1：提示 Chromium 未找到或 Executable doesn't exist？</b></summary>
 
-1. 安装 Docker Desktop
-2. 复制项目文件夹（建议带上 `data/quotas.json` 和 `.session.json`，避免重新登录和配置）
-3. `docker-compose up -d --build`
-4. 宿主机另开终端：`npm install && npm run fetch-watcher`
-5. 浏览器访问 http://localhost:3010
-6. 数据过期或想强制刷新，直接点页面右上角「**刷新**」按钮
-
-> 全新电脑没有 Node.js 时，需要先安装 Node.js 20+，再执行 `npm install`（postinstall 自动下载 Chromium），最后启动 `npm run fetch-watcher` 守护进程。
-
-#### 本地模式
-
-1. 安装 Node.js 20+
-2. 复制项目文件夹（带上 `data/quotas.json` 和 `.session.json`）
-3. `npm install`（postinstall 自动下载 Chromium）
-4. `npm run dev`
-5. 浏览器访问 http://localhost:3010
-6. 如果 source-config 配置丢失，访问 `/source-config` 重新粘贴模型广场 URL
-
----
-
-## 环境变量（可选）
-
-复制 `.env.example` 为 `.env.local` 进行配置（均为可选项）：
+`npm install` 的 `postinstall` 会自动执行 `playwright install chromium`。如果下载失败，在项目目录手动运行：
 
 ```bash
-cp .env.example .env.local
+npx playwright install chromium
 ```
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `DASHSCOPE_API_KEY` | DashScope API Key（`sk-xxx`），用于 API 方式查询，实际效果受限 | 无 |
-| `CACHE_TTL` | 数据缓存时长（毫秒） | `300000`（5 分钟） |
-| `DATA_DIR` | 数据文件目录（Docker 模式使用） | 无 |
+</details>
 
-> 推荐使用**登录方式**而非 API Key，登录方式可以获取完整的免费额度信息。
+<details>
+<summary><b>Q2：Docker 模式点击刷新后等待 watcher 超时？</b></summary>
 
-## 常用命令
+宿主机没有运行 watcher，或容器没有权限写共享目录。打开一个宿主机终端并保持运行：
 
-| 命令 | 说明 |
-|------|------|
-| `npm run dev` | 启动开发服务器（端口 3010） |
-| `npm run build` | 构建生产版本 |
-| `npm run start` | 启动生产服务器（端口 3010） |
-| `npm run lint` | 运行 ESLint 检查 |
-| `npm run fetch-data` | 独立数据抓取（不启动前端） |
-| `npm run fetch-watcher` | Docker 模式下的宿主机 watcher 守护进程 |
-
-## 工作原理
-
-应用通过 Playwright 控制 Chromium 浏览器，复用已保存的阿里云 session，自动访问百炼控制台的各模型详情页，抓取免费额度、剩余量和过期时间等信息。
-
-数据流（本地模式）：
-
-```
-Dashboard UI
-  → GET /api/models
-    → console-scraper (Playwright + .session.json)
-      → 阿里云百炼控制台 API
+```bash
+npm run fetch-watcher
 ```
 
-数据流（Docker 模式）：
+同时确认 `docker-compose.yml` 中存在 `./data:/app/data:rw`。
 
+</details>
+
+<details>
+<summary><b>Q3：Docker 模式页面显示未登录？</b></summary>
+
+先看 `data/.session-status.json`。如果 `valid` 为 `false`，说明 watcher 没找到 session 或确认 session 过期。点击「登录阿里云账号」重新认证；如果文件不存在，先启动 `npm run fetch-watcher`。
+
+</details>
+
+<details>
+<summary><b>Q4：登录后刷新仍然没有数据？</b></summary>
+
+确认已经在 `/source-config` 保存过至少一条百炼模型广场 URL。没有来源配置时，抓取接口会返回「请先在 /source-config 配置要抓取的模型广场页面」。
+
+</details>
+
+<details>
+<summary><b>Q5：Session 多久会过期？</b></summary>
+
+取决于阿里云账号登录态。过期后点击「退出登录」再点击「登录阿里云账号」，让 watcher 或本地 Playwright 重新写入 `.session.json`。
+
+</details>
+
+<details>
+<summary><b>Q6：`npm run fetch-data` 和 `npm run fetch-watcher` 有什么区别？</b></summary>
+
+- `npm run fetch-data`：一次性抓取，完成后退出，只写 `data/quotas.json`
+- `npm run fetch-watcher`：常驻进程，处理 Docker 容器写入的登录/刷新触发文件，并同步 `data/.session-status.json`
+
+</details>
+
+<details>
+<summary><b>Q7：定时任务没有运行？</b></summary>
+
+检查 plist 中的项目路径和 `npm` 绝对路径是否正确。可用下面命令确认 npm 路径：
+
+```bash
+which npm
 ```
-宿主机: npm run fetch-watcher（守护进程，监听触发文件）
-                    ↑ ↓
-                    | | 写 data/quotas.json
-                    | |
-容器: Dashboard UI 点击「刷新」
-  → POST /api/fetch-data
-    → 写 data/.fetch-trigger.json (status: pending)
-    → 轮询触发文件直到 done/error
-    → 返回结果给前端
-```
 
-也支持宿主机手动直接跑 `npm run fetch-data` 一次性抓取（不经容器，直接写 `data/quotas.json`）。
+错误日志在 `/tmp/bailian-fetch.err.log`。
 
-### 自动刷新说明
-
-页面每 5 分钟自动静默重新读取一次 `data/quotas.json`，但这只是重新读文件，不会触发 Playwright 抓取。
-
-数据真正的更新由以下两种方式触发：
-
-- **本地 Dev 模式**：页面点击「刷新」→ `/api/fetch-data` 直接执行抓取
-- **Docker 模式**：页面点击「刷新」→ 容器写触发文件 → 宿主机 `npm run fetch-watcher` 守护进程执行抓取
-
-也可以随时在宿主机手动跑 `npm run fetch-data` 一次性抓取。
-
-## 常见问题
-
-**Q: 登录后刷新仍然显示空数据？**
-A: 确认登录时在弹出窗口中已完全通过阿里云认证（密码 + 短信验证码 / 扫码）。可尝试退出登录后重新登录。
-
-**Q: 提示"Chromium 未找到"或"Executable doesn't exist"？**
-A: 通常 `npm install` 时 postinstall 钩子会自动下载。如果失败，在项目目录执行 `npx playwright install chromium`，然后重启应用。
-
-**Q: Session 多久会过期？**
-A: 取决于阿里云账号的 session 有效期，通常为数天到数周。过期后点击「登录阿里云账号」重新登录即可。
-
-**Q: 如何退出登录？**
-A: 登录状态下，点击右上角「**退出登录**」按钮，会清除本地 session 和数据缓存。
-
-**Q: Docker 模式下点击页面「登录」按钮没反应？**
-A: Docker 容器内无法直接弹出浏览器，但点击「**刷新**」按钮时，宿主机 watcher（`npm run fetch-watcher`）会代为弹出登录窗口。所以 Docker 模式下日常使用流程是：保持 watcher 在宿主机一直运行，需要登录或刷新时直接点页面上的「刷新」按钮。
-
-**Q: Docker 模式下页面点击「刷新」提示"等待宿主机 watcher 处理超时"？**
-A: 说明宿主机没有运行 watcher 守护进程。请打开一个终端执行：`npm run fetch-watcher`，并保持运行。建议跟 Docker 容器一起常驻。
-
-**Q: Docker 模式下页面显示"未登录"？**
-A: 说明 `data/quotas.json` 不存在。点击页面右上角「**刷新**」即可触发首次登录与抓取（前提是宿主机 watcher 已运行）。也可以手动跑 `npm run fetch-data` 一次性完成。
-
-**Q: 定时任务没有运行？**
-A: 检查 plist 文件中的路径是否正确，特别是 `npm` 的绝对路径（可用 `which npm` 确认）。查看 `/tmp/bailian-fetch.err.log` 获取错误信息。
+</details>

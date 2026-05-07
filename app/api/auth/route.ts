@@ -23,13 +23,31 @@ import {
   markSessionInvalid,
 } from "@/lib/data/session-status";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const FETCH_MODE = process.env.FETCH_MODE; // "trigger" 时容器内无 Playwright，登录走 watcher 桥接
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+};
+
+function authJson(body: unknown, init?: ResponseInit) {
+  return NextResponse.json(body, {
+    ...init,
+    headers: {
+      ...NO_STORE_HEADERS,
+      ...(init?.headers as Record<string, string> | undefined),
+    },
+  });
+}
 
 export async function GET() {
   try {
     // 容器侧 marker 优先：marker 存在直接判定未登录（包括 dev 模式）
     if (isLoggedOutMarked()) {
-      return NextResponse.json({
+      return authJson({
         loggedIn: false,
         reason: "logged_out",
       });
@@ -41,7 +59,7 @@ export async function GET() {
     if (process.env.DATA_DIR) {
       const sessionStatus = readSessionStatus();
       if (sessionStatus) {
-        return NextResponse.json({
+        return authJson({
           loggedIn: sessionStatus.valid,
           reason: sessionStatus.valid
             ? null
@@ -53,14 +71,14 @@ export async function GET() {
 
       // 兼容兜底：watcher 还没写过状态，沿用旧逻辑避免老部署一启动就显示未登录
       if (quotaFileExists()) {
-        return NextResponse.json({
+        return authJson({
           loggedIn: true,
           reason: null,
           mode: "docker",
         });
       }
 
-      return NextResponse.json({
+      return authJson({
         loggedIn: false,
         reason: "no_session_status",
         mode: "docker",
@@ -68,13 +86,13 @@ export async function GET() {
     }
 
     const hasSession = consoleScraper.sessionExists();
-    return NextResponse.json({
+    return authJson({
       loggedIn: hasSession,
       reason: hasSession ? null : "no_session",
       mode: FETCH_MODE === "trigger" ? "trigger" : "direct",
     });
   } catch (e) {
-    return NextResponse.json(
+    return authJson(
       { loggedIn: false, reason: "error", message: String(e) },
       { status: 500 }
     );
@@ -101,7 +119,7 @@ export async function POST(request: Request) {
             (existing.status === "pending" || existing.status === "running") &&
             !isTriggerStale(existing)
           ) {
-            return NextResponse.json({
+            return authJson({
               ok: true,
               message:
                 "已有抓取/登录任务正在进行，请在宿主机弹出的浏览器中完成登录。",
@@ -121,7 +139,7 @@ export async function POST(request: Request) {
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             console.error("[auth/login] 写登录触发文件失败:", err);
-            return NextResponse.json(
+            return authJson(
               {
                 ok: false,
                 message: `写入登录触发文件失败：${msg}（请确认 docker-compose 数据卷为可写挂载）`,
@@ -130,7 +148,7 @@ export async function POST(request: Request) {
             );
           }
 
-          return NextResponse.json({
+          return authJson({
             ok: true,
             message:
               "已通知宿主机弹出浏览器登录阿里云账号。请在弹出的浏览器窗口中完成登录，登录完成后会自动抓取数据。" +
@@ -144,7 +162,7 @@ export async function POST(request: Request) {
           const exePath = chromium.executablePath();
           const { existsSync } = await import("fs");
           if (!existsSync(exePath)) {
-            return NextResponse.json(
+            return authJson(
               {
                 ok: false,
                 message: `Chromium 未找到（${exePath}）。请在 bailian-dashboard 目录执行：npx playwright install chromium`,
@@ -153,7 +171,7 @@ export async function POST(request: Request) {
             );
           }
         } catch (e) {
-          return NextResponse.json(
+          return authJson(
             { ok: false, message: `Playwright 检查失败：${String(e)}` },
             { status: 503 }
           );
@@ -165,7 +183,7 @@ export async function POST(request: Request) {
           console.error("[auth/login] 登录流程出错:", e);
         });
 
-        return NextResponse.json({
+        return authJson({
           ok: true,
           message:
             "浏览器已打开，请在弹出的窗口中完成阿里云登录，然后回到这里点击「刷新」。" +
@@ -182,19 +200,19 @@ export async function POST(request: Request) {
         // 同步共享文件：watcher 真正清宿主机 session 之前，先让 /api/auth GET 立刻显示"未登录"，
         // 否则 logout marker 被 watcher 抓取成功后清掉，旧的 valid 状态会回潮。
         markSessionInvalid("cleared");
-        return NextResponse.json({ ok: true, message: "Session cleared." });
+        return authJson({ ok: true, message: "Session cleared." });
       }
 
       case "refresh": {
         // Force re-scrape (clear cache, keep session)
         clearCache();
-        return NextResponse.json({ ok: true, message: "Cache cleared. Next data fetch will re-scrape." });
+        return authJson({ ok: true, message: "Cache cleared. Next data fetch will re-scrape." });
       }
 
       default:
-        return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+        return authJson({ error: "Unknown action" }, { status: 400 });
     }
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    return authJson({ error: String(e) }, { status: 500 });
   }
 }

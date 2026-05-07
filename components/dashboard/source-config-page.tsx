@@ -36,7 +36,7 @@ export function SourceConfigPage() {
       try {
         const [configRes, authRes] = await Promise.all([
           fetch("/api/source-config"),
-          fetch("/api/auth"),
+          fetch("/api/auth", { cache: "no-store" }),
         ]);
 
         const config = await configRes.json() as SourceConfigResponse;
