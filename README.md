@@ -27,7 +27,6 @@
 - [开发指南](#开发指南)
 - [API 路由概览](#api-路由概览)
 - [核心使用流程](#核心使用流程)
-- [macOS 定时抓取](#macos-定时抓取)
 - [故障排查 / FAQ](#故障排查--faq)
 
 ---
@@ -175,7 +174,6 @@ pending ── watcher 接手 ──▶ running ── 抓取成功 ──▶ do
 │   └── utils/
 │
 ├── scripts/
-│   ├── fetch-data.ts                  # 宿主机一次性抓取
 │   └── fetch-watcher.ts               # Docker 模式宿主机 watcher
 │
 ├── data/
@@ -238,16 +236,6 @@ npm run fetch-watcher
 
 打开 [http://localhost:3010](http://localhost:3010)。Docker 模式下，登录和刷新都依赖宿主机 watcher；不运行 watcher 时，刷新会等待到超时。
 
-### 独立抓取
-
-```bash
-npm run fetch-data
-```
-
-该命令不启动前端服务器，直接调用 Playwright 抓取并写入 `data/quotas.json`。它适合手动更新数据或配合系统定时任务使用。
-
----
-
 ## 环境变量
 
 复制 `.env.example` 为 `.env.local` 后按需配置：
@@ -278,7 +266,6 @@ cp .env.example .env.local
 | `npm run build` | 构建生产版本 |
 | `npm run start` | 启动生产服务器（端口 3010） |
 | `npm run lint` | 运行 Next.js ESLint 检查 |
-| `npm run fetch-data` | 独立抓取额度数据 |
 | `npm run fetch-watcher` | Docker 模式宿主机 watcher |
 
 ### 构建与检查
@@ -324,48 +311,7 @@ npx tsc --noEmit
 4. **Playwright 抓取**：访问模型广场页面和模型详情，解析免费额度、剩余额度和过期时间
 5. **写入本地数据**：抓取结果写入 `data/quotas.json`
 6. **前端展示**：Dashboard 按搜索、筛选、排序展示结果
-7. **后续维护**：手动点击「刷新」、运行 `npm run fetch-data`，或用 launchd 定时抓取
-
----
-
-## macOS 定时抓取
-
-使用 launchd 每隔 30 分钟运行一次 `npm run fetch-data`：
-
-```bash
-cat > ~/Library/LaunchAgents/com.bailian.fetch.plist << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.bailian.fetch</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/bin/zsh</string>
-        <string>-c</string>
-        <string>cd /Users/mima0000/Desktop/WorkplaceAgent/LiweiAgent/UsageAgent/bailian-dashboard_01 && /usr/local/bin/npm run fetch-data</string>
-    </array>
-    <key>StartInterval</key>
-    <integer>1800</integer>
-    <key>StandardOutPath</key>
-    <string>/tmp/bailian-fetch.out.log</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/bailian-fetch.err.log</string>
-</dict>
-</plist>
-EOF
-
-launchctl load ~/Library/LaunchAgents/com.bailian.fetch.plist
-launchctl start com.bailian.fetch
-```
-
-停止定时任务：
-
-```bash
-launchctl stop com.bailian.fetch
-launchctl unload ~/Library/LaunchAgents/com.bailian.fetch.plist
-```
+7. **后续维护**：手动点击「刷新」，由本地服务或 Docker watcher 完成抓取
 
 ---
 
@@ -413,26 +359,5 @@ npm run fetch-watcher
 <summary><b>Q5：Session 多久会过期？</b></summary>
 
 取决于阿里云账号登录态。过期后点击「退出登录」再点击「登录阿里云账号」，让 watcher 或本地 Playwright 重新写入 `.session.json`。
-
-</details>
-
-<details>
-<summary><b>Q6：`npm run fetch-data` 和 `npm run fetch-watcher` 有什么区别？</b></summary>
-
-- `npm run fetch-data`：一次性抓取，完成后退出，只写 `data/quotas.json`
-- `npm run fetch-watcher`：常驻进程，处理 Docker 容器写入的登录/刷新触发文件，并同步 `data/.session-status.json`
-
-</details>
-
-<details>
-<summary><b>Q7：定时任务没有运行？</b></summary>
-
-检查 plist 中的项目路径和 `npm` 绝对路径是否正确。可用下面命令确认 npm 路径：
-
-```bash
-which npm
-```
-
-错误日志在 `/tmp/bailian-fetch.err.log`。
 
 </details>
